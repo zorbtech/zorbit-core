@@ -598,6 +598,8 @@ namespace NBitcoin
 
             var builder = new NetworkBuilder()
                 .SetName("ZorbitMain")
+                .SetRootFolderName(ZorbitRootFolderName)
+                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
                 .SetConsensus(consensus)
                 .SetMagic(magic)
                 .SetGenesis(genesis)
@@ -738,6 +740,8 @@ namespace NBitcoin
 
             var builder = new NetworkBuilder()
                 .SetName("ZorbitRegTest")
+                .SetRootFolderName(ZorbitRootFolderName)
+                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
                 .SetConsensus(consensus)
                 .SetMagic(magic)
                 .SetGenesis(genesis)
