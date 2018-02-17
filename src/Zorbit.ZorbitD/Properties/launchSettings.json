@@ -1,0 +1,19 @@
+{
+  "profiles": {
+    "Zorbit.ZorbitD": {
+      "commandName": "Project"
+    },
+    "Zorbit.ZorbitD Test": {
+      "commandName": "Project",
+      "commandLineArgs": "-testnet"
+    },
+    "Zorbit.ZorbitD Test with RPC": {
+      "commandName": "Project",
+      "commandLineArgs": "-testnet -server -rpcpassword=password -rpcuser=user"
+    },
+    "Zorbit.ZorbitD Test Keepalive 60s": {
+      "commandName": "Project",
+      "commandLineArgs": "-testnet -keepalive=60"
+    }
+  }
+}

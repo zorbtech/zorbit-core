@@ -69,6 +69,16 @@ namespace Stratis.Bitcoin.Features.Consensus
     /// </remarks>
     public class Checkpoints : ICheckpoints
     {
+        /// <summary>List of selected checkpoints for Zorbit mainnet.</summary>
+        private static Dictionary<int, CheckpointInfo> zorbitMainnetCheckpoints = new Dictionary<int, CheckpointInfo>
+        {
+        };
+
+        /// <summary>List of selected checkpoints for Zorbit testnet.</summary>
+        private static Dictionary<int, CheckpointInfo> zorbitTestnetCheckpoints = new Dictionary<int, CheckpointInfo>
+        {
+        };
+
         /// <summary>List of selected checkpoints for STRAT mainnet.</summary>
         private static Dictionary<int, CheckpointInfo> stratisMainnetCheckpoints = new Dictionary<int, CheckpointInfo>
         {
@@ -160,6 +170,8 @@ namespace Stratis.Bitcoin.Features.Consensus
             else if (network.Equals(Network.RegTest)) this.checkpoints = new Dictionary<int, CheckpointInfo>();
             else if (network.Equals(Network.StratisMain)) this.checkpoints = stratisMainnetCheckpoints;
             else if (network.Equals(Network.StratisTest)) this.checkpoints = stratisTestnetCheckpoints;
+            else if (network.Equals(Network.ZorbitMain)) this.checkpoints = zorbitMainnetCheckpoints;
+            else if (network.Equals(Network.ZorbitTest)) this.checkpoints = zorbitTestnetCheckpoints;
             else this.checkpoints = new Dictionary<int, CheckpointInfo>();
         }
 

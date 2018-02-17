@@ -25,6 +25,9 @@ namespace NBitcoin
         /// <summary>Current header version.</summary>
         public const int CurrentVersion = 7;
 
+        /// <summary>Default block proof of work provider.</summary>
+        public static IHashProvider PowProvider = HashX13.Instance;
+
         private static BigInteger Pow256 = BigInteger.ValueOf(2).Pow(256);
 
         private uint256 hashPrevBlock;
@@ -148,7 +151,7 @@ namespace NBitcoin
 
         public uint256 GetPoWHash()
         {
-            return HashX13.Instance.Hash(this.ToBytes());
+            return PowProvider.Hash(this.ToBytes());
         }
 
         /// <summary>
