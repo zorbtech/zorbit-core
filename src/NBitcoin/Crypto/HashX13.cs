@@ -10,7 +10,7 @@ namespace NBitcoin.Crypto
     // the hashing objects maintain state during hash calculation.
     // to use in a multi threaded environment create a new instance for every hash.
 
-    public sealed class HashX13
+    public sealed class HashX13 : IHashProvider
     {
         private readonly List<IHash> hashers;
 

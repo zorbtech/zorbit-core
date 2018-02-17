@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using NBitcoin.BouncyCastle.Math;
 using NBitcoin.DataEncoders;
 using NBitcoin.Protocol;
@@ -44,6 +46,12 @@ namespace NBitcoin
         /// <summary> The default name used for the Stratis configuration file. </summary>
         public const string StratisDefaultConfigFilename = "stratis.conf";
 
+        /// <summary> The name of the root folder containing the different Zorbit blockchains (ZorbitMain, ZorbitTest, ZorbitRegTest). </summary>
+        public const string ZorbitRootFolderName = "zorbit";
+
+        /// <summary> The default name used for the Stratis configuration file. </summary>
+        public const string ZorbitDefaultConfigFilename = "zorbit.conf";
+
         public static Network Main => Network.GetNetwork("Main") ?? InitMain();
 
         public static Network TestNet => Network.GetNetwork("TestNet") ?? InitTest();
@@ -55,6 +63,12 @@ namespace NBitcoin
         public static Network StratisTest => Network.GetNetwork("StratisTest") ?? InitStratisTest();
 
         public static Network StratisRegTest => Network.GetNetwork("StratisRegTest") ?? InitStratisRegTest();
+
+        public static Network ZorbitMain => Network.GetNetwork("ZorbitMain") ?? InitZorbitMain();
+
+        public static Network ZorbitTest => Network.GetNetwork("ZorbitTest") ?? InitZorbitTest();
+
+        public static Network ZorbitRegTest => Network.GetNetwork("ZorbitRegTest") ?? InitZorbitRegTest();
 
         private static Network InitMain()
         {
@@ -521,6 +535,225 @@ namespace NBitcoin
             return builder.BuildAndRegister();
         }
 
+        private static Network InitZorbitMain()
+        {
+            Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
+            Transaction.TimeStamp = true;
+
+            var consensus = new Consensus();
+
+            consensus.NetworkOptions = new NetworkOptions()
+            {
+                IsProofOfStake = true
+            };
+
+            consensus.GetPoWHash = (n, h) => Crypto.Lyra2rev2.Instance.Hash(h.ToBytes(options: n));
+
+            consensus.SubsidyHalvingInterval = 262800;
+            consensus.MajorityEnforceBlockUpgrade = 750;
+            consensus.MajorityRejectBlockOutdated = 950;
+            consensus.MajorityWindow = 1000;
+            consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
+            consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
+            consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
+            consensus.BIP34Hash = new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716");
+            consensus.PowLimit = new Target(new uint256("000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
+            consensus.PowTargetTimespan = TimeSpan.FromSeconds(24 * 60 * 60); // 1 day
+            consensus.PowTargetSpacing = TimeSpan.FromSeconds(2 * 60); // 2 minutes
+            consensus.PowAllowMinDifficultyBlocks = false;
+            consensus.PowNoRetargeting = false;
+            consensus.RuleChangeActivationThreshold = 684; // 95% of 720
+            consensus.MinerConfirmationWindow = 720; // nPowTargetTimespan / nPowTargetSpacing
+
+            consensus.BIP9Deployments[BIP9Deployments.TestDummy] = new BIP9DeploymentsParameters(28, 0, 0);
+            consensus.BIP9Deployments[BIP9Deployments.CSV] = new BIP9DeploymentsParameters(0, 0, 0);
+            consensus.BIP9Deployments[BIP9Deployments.Segwit] = new BIP9DeploymentsParameters(1, 0, 0);
+
+            consensus.LastPOWBlock = 1324000;
+
+            consensus.ProofOfStakeLimit = new BigInteger(uint256.Parse("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
+            consensus.ProofOfStakeLimitV2 = new BigInteger(uint256.Parse("000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
+
+            consensus.CoinType = 174;
+
+            consensus.DefaultAssumeValid = new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716");
+
+            Block genesis = CreateZorbitGenesisBlock(1515944103, 33395447, consensus.PowLimit, 1, Money.Zero);
+
+            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
+            // genesis.Header.CacheHashes();
+
+            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
+
+            Assert(consensus.HashGenesisBlock == uint256.Parse("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716"));
+            Assert(genesis.Header.HashMerkleRoot == uint256.Parse("0xe0c01fb7ea26f7de5cc362056b01fd8de036c1a166d355e6f07bbf2dfab1c4ee"));
+
+            var messageStart = new byte[4];
+            messageStart[0] = 0x11;
+            messageStart[1] = 0x10;
+            messageStart[2] = 0x19;
+            messageStart[3] = 0x07;
+            var magic = BitConverter.ToUInt32(messageStart, 0);
+
+            var builder = new NetworkBuilder()
+                .SetName("ZorbitMain")
+                .SetConsensus(consensus)
+                .SetMagic(magic)
+                .SetGenesis(genesis)
+                .SetPort(17777)
+                .SetRPCPort(17778)
+                .SetTxFees(10000, 60000, 10000)
+
+                //.AddDNSSeeds(new[]
+                //{
+                //})
+
+                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (80) })
+                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (142) })
+                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
+                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
+                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
+                .SetBase58Bytes(Base58Type.PASSPHRASE_CODE, new byte[] { 0x2C, 0xE9, 0xB3, 0xE1, 0xFF, 0x39, 0xE2 })
+                .SetBase58Bytes(Base58Type.CONFIRMATION_CODE, new byte[] { 0x64, 0x3B, 0xF6, 0xA8, 0x9A })
+                .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2a })
+                .SetBase58Bytes(Base58Type.ASSET_ID, new byte[] { 23 })
+                .SetBase58Bytes(Base58Type.COLORED_ADDRESS, new byte[] { 0x13 })
+                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zor")
+                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zor");
+
+            //var seed = new[] { "" };
+            //var fixedSeeds = new List<NetworkAddress>();
+            //// Convert the pnSeeds array into usable address objects.
+            //Random rand = new Random();
+            //TimeSpan oneWeek = TimeSpan.FromDays(7);
+            //for (int i = 0; i < seed.Length; i++)
+            //{
+            //    // It'll only connect to one or two seed nodes because once it connects,
+            //    // it'll get a pile of addresses with newer timestamps.                
+            //    NetworkAddress addr = new NetworkAddress();
+            //    // Seed nodes are given a random 'last seen time' of between one and two
+            //    // weeks ago.
+            //    addr.Time = DateTime.UtcNow - (TimeSpan.FromSeconds(rand.NextDouble() * oneWeek.TotalSeconds)) - oneWeek;
+            //    addr.Endpoint = Utils.ParseIpEndpoint(seed[i], builder.Port);
+            //    fixedSeeds.Add(addr);
+            //}
+
+            //builder.AddSeeds(fixedSeeds);
+            return builder.BuildAndRegister();
+        }
+
+        private static Network InitZorbitTest()
+        {
+            Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
+            Transaction.TimeStamp = true;
+
+            var consensus = Network.ZorbitMain.Consensus.Clone();
+            consensus.PowLimit = new Target(uint256.Parse("0000ffff00000000000000000000000000000000000000000000000000000000"));
+            consensus.DefaultAssumeValid = new uint256("0x0000f7d14f2c4e337ec16f0a22bc51d605d66bee7d61a7dfbba81255d0980c50");
+            consensus.PowTargetTimespan = TimeSpan.FromSeconds(2 * 60);
+            consensus.PowAllowMinDifficultyBlocks = true;
+
+            // The message start string is designed to be unlikely to occur in normal data.
+            // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
+            // a large 4-byte int at any alignment.
+            var messageStart = new byte[4];
+            messageStart[0] = 0x16;
+            messageStart[1] = 0x24;
+            messageStart[2] = 0x43;
+            messageStart[3] = 0x04;
+            var magic = BitConverter.ToUInt32(messageStart, 0); //0x5223570; 
+
+            var genesis = Network.ZorbitMain.GetGenesis();
+            genesis.Header.Time = 1515944095;
+            genesis.Header.Nonce = 42735;
+            genesis.Header.Bits = consensus.PowLimit;
+
+            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
+
+            Assert(consensus.HashGenesisBlock == uint256.Parse("0x0000f7d14f2c4e337ec16f0a22bc51d605d66bee7d61a7dfbba81255d0980c50"));
+
+            var builder = new NetworkBuilder()
+                .SetName("ZorbitTest")
+                .SetConsensus(consensus)
+                .SetMagic(magic)
+                .SetGenesis(genesis)
+                .SetPort(27777)
+                .SetRPCPort(27778)
+                .SetTxFees(10000, 60000, 10000)
+                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (80) })
+                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (142) })
+                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
+                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
+                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) });
+
+            //.AddDNSSeeds(new[]
+            //{
+            //});
+
+            //builder.AddSeeds(new[] { new NetworkAddress(IPAddress.Parse(""), builder.Port) }); // the c# testnet node
+
+            return builder.BuildAndRegister();
+        }
+
+        private static Network InitZorbitRegTest()
+        {
+            // TODO: move this to Networks
+            var net = Network.GetNetwork("ZorbitRegTest");
+            if (net != null)
+                return net;
+
+            Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
+            Transaction.TimeStamp = true;
+
+            var consensus = Network.ZorbitTest.Consensus.Clone();
+            consensus.PowLimit = new Target(uint256.Parse("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
+
+            consensus.PowAllowMinDifficultyBlocks = true;
+            consensus.PowNoRetargeting = true;
+
+            var messageStart = new byte[4];
+            messageStart[0] = 0xdd;
+            messageStart[1] = 0xd6;
+            messageStart[2] = 0xea;
+            messageStart[3] = 0xf7;
+            var magic = BitConverter.ToUInt32(messageStart, 0);
+
+            var genesis = Network.ZorbitTest.GetGenesis();
+            genesis.Header.Time = 1515944354;
+            genesis.Header.Nonce = 2;
+            genesis.Header.Bits = consensus.PowLimit;
+
+            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
+
+            Assert(consensus.HashGenesisBlock == uint256.Parse("0x59b6c7ad17bd6f16cdc68e4e5e41aad885bbc8b973c7d589b5ef726d39d29360"));
+
+            consensus.DefaultAssumeValid = null; // turn off assumevalid for regtest.
+
+            var builder = new NetworkBuilder()
+                .SetName("ZorbitRegTest")
+                .SetConsensus(consensus)
+                .SetMagic(magic)
+                .SetGenesis(genesis)
+                .SetPort(17777)
+                .SetRPCPort(17778)
+                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (80) })
+                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (142) })
+                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
+                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
+                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
+                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) });
+
+            return builder.BuildAndRegister();
+        }
+
         private static Block CreateGenesisBlock(uint nTime, uint nNonce, uint nBits, int nVersion, Money genesisReward)
         {
             string pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
@@ -588,6 +821,55 @@ namespace NBitcoin
             genesis.Header.HashPrevBlock = uint256.Zero;
             genesis.UpdateMerkleRoot();
             return genesis;
+        }
+
+        private static Block CreateZorbitGenesisBlock(uint nTime, uint nNonce, uint nBits, int nVersion, Money genesisReward)
+        {
+            string pszTimestamp = "Hawaii in shock after false missile alert";
+            return CreateStratisGenesisBlock(pszTimestamp, nTime, nNonce, nBits, nVersion, genesisReward);
+        }
+
+        public static uint CalculateProofOfWork(BlockHeader header, Consensus consensus)
+        {
+            //if (header.Nonce > 0)
+            //{
+            //    return 0;
+            //}
+
+            uint nonce = 0;
+            int count = 0;
+            Stopwatch sw = new Stopwatch();
+
+            var options = new ParallelOptions
+            {
+               MaxDegreeOfParallelism = 4
+            };
+
+            sw.Start();
+
+            Parallel.ForEach(Enumerable.Range(0, int.MaxValue), options, (i, state) =>
+            {
+                BlockHeader tmp = header.Clone();
+                tmp.Nonce = (uint)i;
+                count++;
+                if (state.IsStopped || state.ShouldExitCurrentIteration || !tmp.CheckProofOfWork(consensus))
+                {
+                    if (sw.ElapsedMilliseconds < 1000)
+                    {
+                        return;
+                    }
+
+                    Console.WriteLine("{0} H/s", count);
+                    count = 0;
+                    sw.Restart();
+                    return;
+                }
+                sw.Stop();
+                nonce = tmp.Nonce;
+                state.Break();
+            });
+
+            return nonce;
         }
     }
 }
