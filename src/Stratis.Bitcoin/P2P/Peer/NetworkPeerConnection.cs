@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
 using NBitcoin.Protocol;
+using Stratis.Bitcoin.Configuration;
 using Stratis.Bitcoin.P2P.Protocol;
 using Stratis.Bitcoin.P2P.Protocol.Behaviors;
 using Stratis.Bitcoin.P2P.Protocol.Payloads;
@@ -29,6 +30,10 @@ namespace Stratis.Bitcoin.P2P.Peer
         /// <summary>Instance logger.</summary>
         private ILogger logger;
 
+        private NodeSettings nodeSettings;
+
+        private NetworkHandler networkHandler;
+
         /// <summary>Specification of the network the node runs on - regtest/testnet/mainnet.</summary>
         private readonly Network network;
 
@@ -44,9 +49,6 @@ namespace Stratis.Bitcoin.P2P.Peer
         /// <summary>Unique identifier of a client.</summary>
         public int Id { get; private set; }
 
-        /// <summary>Underlaying TCP client.</summary>
-        private TcpClient tcpClient;
-
         /// <summary>Prevents parallel execution of multiple write operations on <see cref="stream"/>.</summary>
         private AsyncLock writeLock;
 
@@ -55,13 +57,7 @@ namespace Stratis.Bitcoin.P2P.Peer
         private NetworkStream stream;
 
         /// <summary>Address of the end point the client is connected to, or <c>null</c> if the client has not connected yet.</summary>
-        public IPEndPoint RemoteEndPoint
-        {
-            get
-            {
-                return (IPEndPoint)this.tcpClient?.Client?.RemoteEndPoint;
-            }
-        }
+        public IPEndPoint RemoteEndPoint { get; private set; }
 
         /// <summary>Network peer this connection connects to.</summary>
         private INetworkPeer peer;
@@ -122,21 +118,30 @@ namespace Stratis.Bitcoin.P2P.Peer
         /// <param name="dateTimeProvider">Provider of time functions.</param>
         /// <param name="loggerFactory">Factory for creating loggers.</param>
         /// <param name="payloadProvider">A provider of network payload messages.</param>
-        public NetworkPeerConnection(Network network, INetworkPeer peer, TcpClient client, int clientId, ProcessMessageAsync<IncomingMessage> processMessageAsync, IDateTimeProvider dateTimeProvider, ILoggerFactory loggerFactory, PayloadProvider payloadProvider)
+        public NetworkPeerConnection(Network network, INetworkPeer peer, TcpClient client, int clientId, ProcessMessageAsync<IncomingMessage> processMessageAsync, IDateTimeProvider dateTimeProvider, ILoggerFactory loggerFactory, 
+            PayloadProvider payloadProvider, NodeSettings nodeSettings)
         {
             this.loggerFactory = loggerFactory;
             this.payloadProvider = payloadProvider;
             this.logger = this.loggerFactory.CreateLogger(this.GetType().FullName, $"[{clientId}-{peer.PeerEndPoint}] ");
 
+            this.nodeSettings = nodeSettings;
             this.network = network;
             this.dateTimeProvider = dateTimeProvider;
 
             this.peer = peer;
             this.setPeerStateOnShutdown = NetworkPeerState.Offline;
-            this.tcpClient = client;
             this.Id = clientId;
 
-            this.stream = this.tcpClient.Connected ? this.tcpClient.GetStream() : null;
+            if (client.Client.RemoteEndPoint != null)
+            {
+                this.networkHandler = new NetworkHandler(this.nodeSettings, client);
+                this.stream = client.Connected ? client.GetStream() : null;
+            }
+            else
+            {
+                this.networkHandler = new NetworkHandler(this.nodeSettings);
+            }
             this.ShutdownComplete = new TaskCompletionSource<bool>();
             this.DisposeComplete = new TaskCompletionSource<bool>();
 
@@ -308,6 +313,8 @@ namespace Stratis.Bitcoin.P2P.Peer
             this.logger = this.loggerFactory.CreateLogger(this.GetType().FullName, $"[{this.Id}-{endPoint}] ");
             this.logger.LogTrace("({0}:'{1}')", nameof(endPoint), endPoint);
 
+            this.RemoteEndPoint = endPoint;
+
             try
             {
                 // This variable records any error occurring in the thread pool task's context.
@@ -317,7 +324,14 @@ namespace Stratis.Bitcoin.P2P.Peer
                 {
                     try
                     {
-                        this.tcpClient.ConnectAsync(endPoint.Address, endPoint.Port).Wait(cancellation);
+                        if (this.networkHandler.HasInboundClient)
+                        {
+                            this.networkHandler.ConnectInboundClientAsync(endPoint, cancellation);
+                        }
+                        else
+                        {
+                            this.networkHandler.ConnectAsync(endPoint, cancellation).Wait();
+                        }
                     }
                     catch (Exception e)
                     {
@@ -330,7 +344,7 @@ namespace Stratis.Bitcoin.P2P.Peer
                 if (error != null)
                     throw error;
 
-                this.stream = this.tcpClient.GetStream();
+                this.stream = this.networkHandler.Stream;
             }
             catch (OperationCanceledException)
             {
@@ -663,13 +677,12 @@ namespace Stratis.Bitcoin.P2P.Peer
             this.logger.LogTrace("()");
 
             NetworkStream disposeStream = this.stream;
-            TcpClient disposeTcpClient = this.tcpClient;
 
             this.stream = null;
-            this.tcpClient = null;
 
             disposeStream?.Dispose();
-            disposeTcpClient?.Dispose();
+
+            this.networkHandler.Disconnect();
 
             this.logger.LogTrace("(-)");
         }

@@ -154,6 +154,8 @@ namespace Stratis.Bitcoin.Configuration
         /// <summary><c>true</c> to sync time with other peers and calculate adjusted time, <c>false</c> to use our system clock only.</summary>
         public bool SyncTimeEnabled { get; set; }
 
+        public bool TorEnabled { get; private set; }
+
         /// <summary>
         /// Initializes default configuration.
         /// </summary>
@@ -228,6 +230,9 @@ namespace Stratis.Bitcoin.Configuration
 
             this.SyncTimeEnabled = config.GetOrDefault<bool>("synctime", true);
             this.Logger.LogDebug("Time synchronization with peers is {0}.", this.SyncTimeEnabled ? "enabled" : "disabled");
+
+            this.TorEnabled = config.GetOrDefault("torenabled", false);
+            this.Logger.LogDebug("TorEnabled set to {0}", this.TorEnabled);
 
             return this;
         }
