@@ -598,6 +598,8 @@ namespace NBitcoin
 
             var builder = new NetworkBuilder()
                 .SetName("ZorbitMain")
+                .SetRootFolderName(ZorbitRootFolderName)
+                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
                 .SetConsensus(consensus)
                 .SetMagic(magic)
                 .SetGenesis(genesis)
@@ -653,7 +655,7 @@ namespace NBitcoin
 
             var consensus = Network.ZorbitMain.Consensus.Clone();
             consensus.PowLimit = new Target(uint256.Parse("0000ffff00000000000000000000000000000000000000000000000000000000"));
-            consensus.DefaultAssumeValid = new uint256("0x0000f7d14f2c4e337ec16f0a22bc51d605d66bee7d61a7dfbba81255d0980c50");
+            consensus.DefaultAssumeValid = new uint256("0x0000eebc0157ee562205819f1979f604c7e9de45221e41026a3760871473f982");
             consensus.PowTargetTimespan = TimeSpan.FromSeconds(2 * 60);
             consensus.PowAllowMinDifficultyBlocks = true;
 
@@ -669,15 +671,19 @@ namespace NBitcoin
 
             var genesis = Network.ZorbitMain.GetGenesis();
             genesis.Header.Time = 1515944095;
-            genesis.Header.Nonce = 42735;
+            genesis.Header.Nonce = 92122;
             genesis.Header.Bits = consensus.PowLimit;
+
+            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
 
             consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
 
-            Assert(consensus.HashGenesisBlock == uint256.Parse("0x0000f7d14f2c4e337ec16f0a22bc51d605d66bee7d61a7dfbba81255d0980c50"));
+            Assert(consensus.HashGenesisBlock == uint256.Parse("0x0000eebc0157ee562205819f1979f604c7e9de45221e41026a3760871473f982"));
 
             var builder = new NetworkBuilder()
                 .SetName("ZorbitTest")
+                .SetRootFolderName(ZorbitRootFolderName)
+                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
                 .SetConsensus(consensus)
                 .SetMagic(magic)
                 .SetGenesis(genesis)
@@ -727,17 +733,21 @@ namespace NBitcoin
 
             var genesis = Network.ZorbitTest.GetGenesis();
             genesis.Header.Time = 1515944354;
-            genesis.Header.Nonce = 2;
+            genesis.Header.Nonce = 8;
             genesis.Header.Bits = consensus.PowLimit;
+
+            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
 
             consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
 
-            Assert(consensus.HashGenesisBlock == uint256.Parse("0x59b6c7ad17bd6f16cdc68e4e5e41aad885bbc8b973c7d589b5ef726d39d29360"));
+            Assert(consensus.HashGenesisBlock == uint256.Parse("0x301b0f400afd80b21830101ca2bf847a6a56e8b6ff99e2320798c452c34f6c3b"));
 
             consensus.DefaultAssumeValid = null; // turn off assumevalid for regtest.
 
             var builder = new NetworkBuilder()
                 .SetName("ZorbitRegTest")
+                .SetRootFolderName(ZorbitRootFolderName)
+                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
                 .SetConsensus(consensus)
                 .SetMagic(magic)
                 .SetGenesis(genesis)
@@ -831,11 +841,6 @@ namespace NBitcoin
 
         public static uint CalculateProofOfWork(BlockHeader header, Consensus consensus)
         {
-            //if (header.Nonce > 0)
-            //{
-            //    return 0;
-            //}
-
             uint nonce = 0;
             int count = 0;
             Stopwatch sw = new Stopwatch();

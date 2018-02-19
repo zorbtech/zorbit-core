@@ -131,6 +131,11 @@ namespace Stratis.Bitcoin.Configuration.Logging
             }
             LogManager.Configuration.LoggingRules.Remove(nullPreInitRule);
 
+            if (!Directory.Exists(folder.LogPath))
+            {
+                Directory.CreateDirectory(folder.LogPath);
+            }
+            
             // Configure main file target, configured using command line or node configuration file settings.
             var mainTarget = new FileTarget
             {
