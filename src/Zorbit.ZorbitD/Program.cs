@@ -37,7 +37,7 @@ namespace Zorbit.ZorbitD
                     .UseBlockStore()
                     .UseMempool()
                     .UseWallet()
-                    .AddPowPosMining()
+                    .AddPowPosHybridMining()
                     .UseApi()
                     .AddRPC()
                     .Build();

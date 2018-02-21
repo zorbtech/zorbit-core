@@ -23,7 +23,7 @@ namespace NBitcoin
         internal const int Size = 80;
 
         /// <summary>Current header version.</summary>
-        public const int CurrentVersion = 7;
+        public static int CurrentVersion = 7;
 
         /// <summary>Default block proof of work provider.</summary>
         public static IHashProvider PowProvider = HashX13.Instance;

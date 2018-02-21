@@ -23,7 +23,7 @@ namespace Stratis.Bitcoin.Features.Consensus.Rules.CommonRules
             ChainedBlock chainedBlock = context.BlockValidationContext.ChainedBlock;
             this.Logger.LogTrace("Height of block is {0}, block timestamp is {1}, previous block timestamp is {2}, block version is 0x{3:x}.", chainedBlock.Height, chainedBlock.Header.Time, chainedBlock.Previous.Header.Time, chainedBlock.Header.Version);
 
-            if (chainedBlock.Header.Version < 7)
+            if (context.Stake.BlockStake.IsProofOfStake() && chainedBlock.Header.Version < 7)
             {
                 this.Logger.LogTrace("(-)[BAD_VERSION]");
                 ConsensusErrors.BadVersion.Throw();

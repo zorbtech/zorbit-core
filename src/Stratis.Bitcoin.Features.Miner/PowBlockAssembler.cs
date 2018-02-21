@@ -32,8 +32,6 @@ namespace Stratis.Bitcoin.Features.Miner
         public bool IsProofOfStake = false;
     }
 
-;
-
     public class BlockTemplate
     {
         public Block Block;
@@ -226,7 +224,7 @@ namespace Stratis.Bitcoin.Features.Miner
             this.pblocktemplate = new BlockTemplate { Block = new Block(), VTxFees = new List<Money>() };
         }
 
-        private int ComputeBlockVersion(ChainedBlock prevChainedBlock, NBitcoin.Consensus consensus)
+        protected virtual int ComputeBlockVersion(ChainedBlock prevChainedBlock, NBitcoin.Consensus consensus)
         {
             uint nVersion = ThresholdConditionCache.VersionbitsTopBits;
             var thresholdConditionCache = new ThresholdConditionCache(consensus);
@@ -237,7 +235,7 @@ namespace Stratis.Bitcoin.Features.Miner
             foreach (BIP9Deployments deployment in deployments)
             {
                 ThresholdState state = thresholdConditionCache.GetState(prevChainedBlock, deployment);
-                if ((state == ThresholdState.LockedIn) || (state == ThresholdState.Started))
+                if (state == ThresholdState.LockedIn || state == ThresholdState.Started)
                     nVersion |= thresholdConditionCache.Mask(deployment);
             }
 

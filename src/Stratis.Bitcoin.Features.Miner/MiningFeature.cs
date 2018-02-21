@@ -121,15 +121,15 @@ namespace Stratis.Bitcoin.Features.Miner
         {
             if (this.minerSettings.Mine)
             {
-                string minto = this.minerSettings.MineAddress;
+                string mineto = this.minerSettings.MineAddress;
                 // if (string.IsNullOrEmpty(minto)) ;
                 //    TODO: get an address from the wallet.
 
-                if (!string.IsNullOrEmpty(minto))
+                if (!string.IsNullOrEmpty(mineto))
                 {
                     this.logger.LogInformation("Mining enabled.");
-
-                    this.powLoop = this.powMining.Mine(BitcoinAddress.Create(minto, this.network).ScriptPubKey);
+                    BitcoinAddress address = BitcoinAddress.Create(mineto, this.network);
+                    this.powLoop = this.powMining.Mine(address.ScriptPubKey);
                 }
             }
 
@@ -224,6 +224,38 @@ namespace Stratis.Bitcoin.Features.Miner
                         services.AddSingleton<IPowMining, PowMining>();
                         services.AddSingleton<IPosMinting, PosMinting>();
                         services.AddSingleton<IAssemblerFactory, PosAssemblerFactory>();
+                        services.AddSingleton<MinerController>();
+                        services.AddSingleton<MiningRPCController>();
+                        services.AddSingleton<IWalletManager, WalletManager>();
+                        services.AddSingleton<MinerSettings>(new MinerSettings(setup));
+                    });
+            });
+
+            return fullNodeBuilder;
+        }
+
+        /// <summary>
+        /// Adds POW and POS miner components to the node, so that it can mine and stake.
+        /// </summary>
+        /// <param name="fullNodeBuilder">The object used to build the current node.</param>
+        /// <param name="setup">Callback routine to be called when miner settings are loaded.</param>
+        /// <returns>The full node builder, enriched with the new component.</returns>
+        public static IFullNodeBuilder AddPowPosHybridMining(this IFullNodeBuilder fullNodeBuilder, Action<MinerSettings> setup = null)
+        {
+            LoggingConfiguration.RegisterFeatureNamespace<MiningFeature>("mining");
+
+            fullNodeBuilder.ConfigureFeature(features =>
+            {
+                features
+                    .AddFeature<MiningFeature>()
+                    .DependOn<MempoolFeature>()
+                    .DependOn<RPCFeature>()
+                    .DependOn<WalletFeature>()
+                    .FeatureServices(services =>
+                    {
+                        services.AddSingleton<IPowMining, PowMining>();
+                        services.AddSingleton<IPosMinting, PosMinting>();
+                        services.AddSingleton<IAssemblerFactory, PowPosAssemblerFactory>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
                         services.AddSingleton<IWalletManager, WalletManager>();
