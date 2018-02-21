@@ -1221,7 +1221,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         {
             this.logger.LogTrace("({0}:'{1}')", nameof(walletName), walletName);
 
-            Wallet wallet = this.Wallets.SingleOrDefault(w => w.Name == walletName);
+            Wallet wallet = this.Wallets.SingleOrDefault(w => w.Name.Equals(walletName, StringComparison.InvariantCultureIgnoreCase));
             if (wallet == null)
             {
                 this.logger.LogTrace("(-)[NOT_FOUND]");
