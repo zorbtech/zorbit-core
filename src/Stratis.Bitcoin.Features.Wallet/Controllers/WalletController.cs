@@ -74,11 +74,11 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
         /// Generates a new mnemonic. The call can optionally specify a language and the number of words in the mnemonic.
         /// </summary>
         /// <param name="language">The language for the words in the mnemonic. Options are: English, French, Spanish, Japanese, ChineseSimplified and ChineseTraditional. The default is 'English'.</param>
-        /// <param name="wordCount">The number of words in the mnemonic. Options are: 12,15,18,21 or 24. the default is 12.</param>
+        /// <param name="wordCount">The number of words in the mnemonic. Options are: 12,15,18,21 or 24. the default is 24.</param>
         /// <returns>A JSON object containing the mnemonic generated.</returns>
         [Route("mnemonic")]
         [HttpGet]
-        public IActionResult GenerateMnemonic([FromQuery] string language = "English", int wordCount = 12)
+        public IActionResult GenerateMnemonic([FromQuery] string language = "English", int wordCount = 24)
         {
             this.logger.LogTrace("({0}:'{1}',{2}:'{3}')", nameof(language), language, nameof(wordCount), wordCount);
 
@@ -287,7 +287,7 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 // Get the wallet's file path.
                 (string folder, IEnumerable<string> fileNameCollection) = this.walletManager.GetWalletsFiles();
                 string searchFile = Path.ChangeExtension(request.Name, this.walletManager.GetWalletFileExtension());
-                string fileName = fileNameCollection.FirstOrDefault(i => i.Equals(searchFile));
+                string fileName = fileNameCollection.FirstOrDefault(i => i.Equals(searchFile, StringComparison.InvariantCultureIgnoreCase));
                 if (folder != null && fileName != null)
                     model.WalletFilePath = Path.Combine(folder, fileName);
 
