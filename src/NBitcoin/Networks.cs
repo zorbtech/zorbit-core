@@ -576,7 +576,7 @@ namespace NBitcoin
             consensus.ProofOfStakeLimit = new BigInteger(uint256.Parse("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
             consensus.ProofOfStakeLimitV2 = new BigInteger(uint256.Parse("000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
 
-            consensus.CoinType = 174;
+            consensus.CoinType = 177;
 
             consensus.DefaultAssumeValid = new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716");
 
