@@ -29,6 +29,9 @@ namespace Stratis.Bitcoin.Features.Miner
         {
         }
 
+        protected override void ClearCoinbase()
+        {
+        }
 
         protected override int ComputeBlockVersion(ChainedBlock prevChainedBlock, NBitcoin.Consensus consensus)
         {

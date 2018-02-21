@@ -11,13 +11,13 @@ namespace Stratis.Bitcoin.Features.Miner
     public class PosBlockAssembler : PowBlockAssembler
     {
         /// <summary>Instance logger.</summary>
-        private readonly ILogger logger;
+        protected readonly ILogger logger;
 
         /// <summary>Database of stake related data for the current blockchain.</summary>
-        private readonly StakeChain stakeChain;
+        protected readonly StakeChain stakeChain;
 
         /// <summary>Provides functionality for checking validity of PoS blocks.</summary>
-        private readonly IStakeValidator stakeValidator;
+        protected readonly IStakeValidator stakeValidator;
 
         public PosBlockAssembler(
             IConsensusLoop consensusLoop,
@@ -43,14 +43,19 @@ namespace Stratis.Bitcoin.Features.Miner
 
             base.CreateNewBlock(scriptPubKeyIn, fMineWitnessTx);
 
-            this.coinbase.Outputs[0].ScriptPubKey = new Script();
-            this.coinbase.Outputs[0].Value = Money.Zero;
+            this.ClearCoinbase();
 
             IPosConsensusValidator posValidator = this.consensusLoop.Validator as IPosConsensusValidator;
             Guard.NotNull(posValidator, nameof(posValidator));
 
             this.logger.LogTrace("(-)");
             return this.pblocktemplate;
+        }
+
+        protected virtual void ClearCoinbase()
+        {
+            this.coinbase.Outputs[0].ScriptPubKey = new Script();
+            this.coinbase.Outputs[0].Value = Money.Zero;
         }
 
         protected override void UpdateHeaders()
