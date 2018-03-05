@@ -140,13 +140,14 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// <param name="password">The password used to decrypt the wallet's <see cref="EncryptedSeed"/>.</param>
         /// <param name="coinType">The type of coin this account is for.</param>
         /// <param name="accountCreationTime">Creation time of the account to be created.</param>
+        /// <param name="segwit">The wallet should use segwit addresses.</param>
         /// <returns>A new HD account.</returns>
-        public HdAccount AddNewAccount(string password, CoinType coinType, DateTimeOffset accountCreationTime)
+        public HdAccount AddNewAccount(string password, CoinType coinType, DateTimeOffset accountCreationTime, bool segwit = false)
         {
             Guard.NotEmpty(password, nameof(password));
 
             var accountRoot = this.AccountsRoot.Single(a => a.CoinType == coinType);
-            return accountRoot.AddNewAccount(password, this.EncryptedSeed, this.ChainCode, this.Network, accountCreationTime);
+            return accountRoot.AddNewAccount(password, this.EncryptedSeed, this.ChainCode, this.Network, accountCreationTime, segwit);
         }
 
         /// <summary>
@@ -312,8 +313,9 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// <param name="chainCode">The chain code for this wallet.</param>
         /// <param name="network">The network for which this account will be created.</param>
         /// <param name="accountCreationTime">Creation time of the account to be created.</param>
+        /// <param name="segwit">The wallet should use segwit addresses.</param>
         /// <returns>A new HD account.</returns>
-        public HdAccount AddNewAccount(string password, string encryptedSeed, byte[] chainCode, Network network, DateTimeOffset accountCreationTime)
+        public HdAccount AddNewAccount(string password, string encryptedSeed, byte[] chainCode, Network network, DateTimeOffset accountCreationTime, bool segwit)
         {
             Guard.NotEmpty(password, nameof(password));
             Guard.NotEmpty(encryptedSeed, nameof(encryptedSeed));
@@ -329,7 +331,10 @@ namespace Stratis.Bitcoin.Features.Wallet
             }
 
             // Get the extended pub key used to generate addresses for this account.
-            string accountHdPath = HdOperations.GetAccountHdPath((int)this.CoinType, newAccountIndex);
+            string accountHdPath = segwit ?
+                HdOperations.GetAccountHd49Path((int)this.CoinType, newAccountIndex) :
+                HdOperations.GetAccountHdPath((int)this.CoinType, newAccountIndex);
+
             Key privateKey = HdOperations.DecryptSeed(encryptedSeed, password, network);
             ExtPubKey accountExtPubKey = HdOperations.GetExtendedPublicKey(privateKey, chainCode, accountHdPath);
 
@@ -396,6 +401,15 @@ namespace Stratis.Bitcoin.Features.Wallet
         [JsonProperty(PropertyName = "creationTime")]
         [JsonConverter(typeof(DateTimeOffsetConverter))]
         public DateTimeOffset CreationTime { get; set; }
+
+        /// <summary>
+        /// Gets the wallet address type.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsSegwit
+        {
+            get { return HdOperations.IsHd49Path(this.HdPath); }
+        }
 
         /// <summary>
         /// The list of external addresses, typically used for receiving money.
@@ -580,13 +594,25 @@ namespace Stratis.Bitcoin.Features.Wallet
             {
                 // Generate a new address.
                 PubKey pubkey = HdOperations.GeneratePublicKey(this.ExtendedPubKey, i, isChange);
-                BitcoinPubKeyAddress address = pubkey.GetAddress(network);
+                BitcoinAddress address;
+                string hdPath;
+
+                if (this.IsSegwit)
+                {
+                    address = pubkey.GetSegwitAddress(network);
+                    hdPath = HdOperations.CreateHd49Path((int)this.GetCoinType(), this.Index, i, isChange);
+                }
+                else
+                {
+                    address = pubkey.GetAddress(network);
+                    hdPath = HdOperations.CreateHdPath((int)this.GetCoinType(), this.Index, i, isChange);
+                }
 
                 // Add the new address details to the list of addresses.
                 addresses.Add(new HdAddress
                 {
                     Index = i,
-                    HdPath = HdOperations.CreateHdPath((int)this.GetCoinType(), this.Index, i, isChange),
+                    HdPath = hdPath,
                     ScriptPubKey = address.ScriptPubKey,
                     Pubkey = pubkey.ScriptPubKey,
                     Address = address.ToString(),

@@ -147,7 +147,7 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
 
             try
             {
-                Mnemonic mnemonic = this.walletManager.CreateWallet(request.Password, request.Name, mnemonic: request.Mnemonic);
+                Mnemonic mnemonic = this.walletManager.CreateWallet(request.Password, request.Name, mnemonic: request.Mnemonic, segwit: request.Segwit);
 
                 // start syncing the wallet from the creation date
                 this.walletSyncManager.SyncFromDate(this.dateTimeProvider.GetUtcNow());

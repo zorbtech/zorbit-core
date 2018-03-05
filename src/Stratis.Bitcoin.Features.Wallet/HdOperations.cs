@@ -58,13 +58,17 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// <param name="chainCode">The chain code used in creating the extended public key.</param>
         /// <param name="coinType">Type of the coin of the account for which to generate an extended public key.</param>
         /// <param name="accountIndex">Index of the account for which to generate an extended public key.</param>
+        /// <param name="bip49">The HDPath should be derived using BIP49.</param>
         /// <returns>The extended public key for an account, used to derive child keys.</returns>
-        public static ExtPubKey GetExtendedPublicKey(Key privateKey, byte[] chainCode, int coinType, int accountIndex)
+        public static ExtPubKey GetExtendedPublicKey(Key privateKey, byte[] chainCode, int coinType, int accountIndex, bool bip49 = false)
         {
             Guard.NotNull(privateKey, nameof(privateKey));
             Guard.NotNull(chainCode, nameof(chainCode));
 
-            var accountHdPath = GetAccountHdPath(coinType, accountIndex);
+            string accountHdPath = bip49 ? 
+                GetAccountHd49Path(coinType, accountIndex) : 
+                GetAccountHdPath(coinType, accountIndex);
+
             return GetExtendedPublicKey(privateKey, chainCode, accountHdPath);
         }
 
@@ -97,6 +101,27 @@ namespace Stratis.Bitcoin.Features.Wallet
         public static string GetAccountHdPath(int coinType, int accountIndex)
         {
             return $"m/44'/{coinType}'/{accountIndex}'";
+        }
+
+        /// <summary>
+        /// Gets the HD path of an account dervied from BIP49.
+        /// </summary>
+        /// <param name="coinType">Type of the coin this account is in.</param>
+        /// <param name="accountIndex">Index of the account.</param>
+        /// <returns>The HD path of an account.</returns>
+        public static string GetAccountHd49Path(int coinType, int accountIndex)
+        {
+            return $"m/49'/{coinType}'/{accountIndex}'";
+        }
+
+        /// <summary>
+        /// Gets the HD path of an account dervied from BIP49.
+        /// </summary>
+        /// <param name="hdPath">The HD path of an account.</param>
+        /// <returns>The HD path of an account derives from BIP49.</returns>
+        public static bool IsHd49Path(string hdPath)
+        {
+            return !string.IsNullOrEmpty(hdPath) && hdPath.StartsWith("m/49");
         }
 
         /// <summary>
@@ -142,6 +167,21 @@ namespace Stratis.Bitcoin.Features.Wallet
         {
             int change = isChange ? 1 : 0;
             return $"m/44'/{coinType}'/{accountIndex}'/{change}/{addressIndex}";
+        }
+
+        /// <summary>
+        /// Creates an address' HD path, according to BIP 49.
+        /// </summary>
+        /// <param name="coinType">Type of coin in the HD path.</param>
+        /// <param name="accountIndex">Index of the account in the HD path.</param>
+        /// <param name="addressIndex">Index of the address in the HD path.</param>
+        /// <param name="isChange">A value indicating whether the HD path to generate corresponds to a change address.</param>
+        /// <returns>The HD path.</returns>
+        /// <remarks>Refer to <seealso cref="https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki#Public_key_derivation"/> for the format of the HD path.</remarks>
+        public static string CreateHd49Path(int coinType, int accountIndex, int addressIndex, bool isChange = false)
+        {
+            int change = isChange ? 1 : 0;
+            return $"m/49'/{coinType}'/{accountIndex}'/{change}/{addressIndex}";
         }
 
         /// <summary>
