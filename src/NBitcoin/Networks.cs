@@ -698,8 +698,8 @@ namespace NBitcoin
                 .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
                 .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
                 .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2e })
-                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrb")
-                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrb");
+                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrt")
+                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrt");
 
             //.AddDNSSeeds(new[]
             //{
@@ -767,8 +767,8 @@ namespace NBitcoin
                 .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
                 .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
                 .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2f })
-                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrb")
-                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrb");
+                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrr")
+                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrr");
 
             return builder.BuildAndRegister();
         }
