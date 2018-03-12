@@ -323,12 +323,12 @@ namespace NBitcoin
         private static Network InitStratisMain()
         {
             Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.HashX13.Instance;
             Transaction.TimeStamp = true;
 
             var consensus = new Consensus();
 
             consensus.NetworkOptions = new NetworkOptions() { IsProofOfStake = true };
-            consensus.GetPoWHash = (n, h) => Crypto.HashX13.Instance.Hash(h.ToBytes(options: n));
 
             consensus.SubsidyHalvingInterval = 210000;
             consensus.MajorityEnforceBlockUpgrade = 750;
@@ -435,6 +435,7 @@ namespace NBitcoin
         private static Network InitStratisTest()
         {
             Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.HashX13.Instance;
             Transaction.TimeStamp = true;
 
             var consensus = Network.StratisMain.Consensus.Clone();
@@ -500,6 +501,7 @@ namespace NBitcoin
                 return net;
 
             Block.BlockSignature = true;
+            BlockHeader.PowProvider = Crypto.HashX13.Instance;
             Transaction.TimeStamp = true;
 
             var consensus = Network.StratisTest.Consensus.Clone();
@@ -560,9 +562,6 @@ namespace NBitcoin
             {
                 IsProofOfStake = true
             };
-
-            consensus.GetPoWHash = (n, h) => Crypto.Lyra2rev2.Instance.Hash(h.ToBytes(options: n));
-
             consensus.SubsidyHalvingInterval = 262800;
             consensus.MajorityEnforceBlockUpgrade = 750;
             consensus.MajorityRejectBlockOutdated = 950;
