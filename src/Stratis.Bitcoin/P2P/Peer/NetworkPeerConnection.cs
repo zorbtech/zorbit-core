@@ -521,12 +521,7 @@ namespace Stratis.Bitcoin.P2P.Peer
             NetworkStream disposeStream = this.stream;
 
             this.stream = null;
-<<<<<<< HEAD
 
-=======
-            this.tcpClient = null;
-          
->>>>>>> origin/development
             disposeStream?.Dispose();
 
             this.networkHandler.Disconnect();
