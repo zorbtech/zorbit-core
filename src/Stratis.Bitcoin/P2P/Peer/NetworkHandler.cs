@@ -8,6 +8,8 @@
     using System.Threading.Tasks;
     using Stratis.Bitcoin.Configuration;
     using DotNetTor;
+    using System.Diagnostics;
+    using Microsoft.Extensions.Logging;
 
     public class NetworkHandler
     {
@@ -65,6 +67,7 @@
         public bool HasInboundClient { get; private set; }
 
         private IPEndPoint _endPoint;
+        private Process TorProcess;
 
         public NetworkHandler(NodeSettings nodeSettings)
         {
@@ -77,6 +80,51 @@
         {
             this.TcpClient = tcpClient;
             this.HasInboundClient = true;
+        }
+
+        public bool InitialiseTor()
+        {
+            var torProcess = Process.GetProcessesByName("tor");
+            if (torProcess.Length == 0)
+            {
+                this.TorProcess = new Process()
+                {
+                    StartInfo = new ProcessStartInfo()
+                    {
+                        FileName = "tor",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = false,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    },
+                    EnableRaisingEvents = true
+                };
+
+                // this may not trigger in all cases - https://github.com/dotnet/coreclr/issues/8565
+                AppDomain.CurrentDomain.ProcessExit += NetworkHandler_Exited;
+
+                this.NodeSettings.Logger.LogInformation("Starting Tor");
+
+                this.TorProcess.Start();
+                var result = "";
+                var finishedInitialising = false;
+                do
+                {
+                    result = this.TorProcess.StandardOutput.ReadLine();
+                    finishedInitialising = result.Contains("Bootstrapped 100%: Done", StringComparison.InvariantCultureIgnoreCase);
+                }
+                while (!finishedInitialising && !this.TorProcess.StandardOutput.EndOfStream);
+                return finishedInitialising;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        private void NetworkHandler_Exited(object sender, EventArgs e)
+        {
+            this.TorProcess.Close();
         }
 
         public void ConnectInboundClientAsync(IPEndPoint endPoint, CancellationToken cancellation)
