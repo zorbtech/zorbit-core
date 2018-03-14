@@ -88,10 +88,10 @@ namespace Stratis.Bitcoin.Features.Miner
         protected readonly StakeChain stakeChain;
 
         /// <summary>Instance logger.</summary>
-        private readonly ILogger logger;
+        protected readonly ILogger logger;
 
         /// <summary>Provides functionality for checking validity of PoS blocks.</summary>
-        private readonly IStakeValidator stakeValidator;
+        protected readonly IStakeValidator stakeValidator;
 
         /// <summary>Factory for creating loggers.</summary>
         protected readonly ILoggerFactory loggerFactory;
@@ -117,7 +117,7 @@ namespace Stratis.Bitcoin.Features.Miner
             this.logger = loggerFactory.CreateLogger(this.GetType().FullName);
         }
 
-        public BlockAssembler Create(ChainedBlock chainTip, AssemblerOptions options = null)
+        public virtual BlockAssembler Create(ChainedBlock chainTip, AssemblerOptions options = null)
         {
             return new PosBlockAssembler(this.consensusLoop, this.network, this.mempoolScheduler, this.mempool,
                 this.dateTimeProvider, this.stakeChain, this.stakeValidator, chainTip, this.loggerFactory, options);

@@ -128,6 +128,17 @@ namespace Stratis.Bitcoin.Configuration
         /// <summary>Option to skip (most) non-standard transaction checks, for testnet/regtest only.</summary>
         public bool RequireStandard { get; set; }
 
+        /// <summary>Determines whether to print help and exit.</summary>
+        public bool PrintHelpAndExit
+        {
+            get
+            {
+                var args = this.LoadArgs;
+
+                return args != null && args.Length == 1 && (args[0].StartsWith("-help") || args[0].StartsWith("--help"));
+            }
+        }
+
         /// <summary>Maximum tip age in seconds to consider node in initial block download.</summary>
         public int MaxTipAge { get; set; }
 
@@ -136,7 +147,7 @@ namespace Stratis.Bitcoin.Configuration
 
         /// <summary>Specification of the network the node runs on - regtest/testnet/mainnet.</summary>
         public Network Network { get; private set; }
-        
+
         /// <summary>The node's user agent that will be shared with peers in the version handshake.</summary>
         public string Agent { get; set; }
 
@@ -227,12 +238,17 @@ namespace Stratis.Bitcoin.Configuration
             this.Logger.LogDebug("FallbackTxFeeRate set to {0}.", this.FallbackTxFeeRate);
             this.MinRelayTxFeeRate = new FeeRate(config.GetOrDefault("minrelaytxfee", this.Network.MinRelayTxFee));
             this.Logger.LogDebug("MinRelayTxFeeRate set to {0}.", this.MinRelayTxFeeRate);
-
             this.SyncTimeEnabled = config.GetOrDefault<bool>("synctime", true);
             this.Logger.LogDebug("Time synchronization with peers is {0}.", this.SyncTimeEnabled ? "enabled" : "disabled");
 
             this.TorEnabled = config.GetOrDefault("torenabled", false);
             this.Logger.LogDebug("TorEnabled set to {0}", this.TorEnabled);
+
+            // Add a prefix set by the user to the agent. This will allow people running nodes to
+            // identify themselves if they wish. The prefix is limited to 10 characters.
+            string agentPrefix = config.GetOrDefault("agentprefix", string.Empty);
+            agentPrefix = agentPrefix.Substring(0, Math.Min(10, agentPrefix.Length));
+            this.Agent = string.IsNullOrEmpty(agentPrefix) ? this.Agent : $"{agentPrefix}-{this.Agent}";
 
             return this;
         }
@@ -360,51 +376,40 @@ namespace Stratis.Bitcoin.Configuration
         }
 
         /// <summary>
-        /// Checks whether to show a help and possibly shows the help.
+        /// Displays command-line help.
         /// </summary>
-        /// <param name="args">Application command line arguments.</param>
         /// <param name="network">The network to extract values from.</param>
-        /// <returns><c>true</c> if the help was displayed, <c>false</c> otherwise.</returns>
-        public static bool PrintHelp(string[] args, Network network)
+        public static void PrintHelp(Network network)
         {
             Guard.NotNull(network, nameof(network));
 
-            if (args != null && args.Length == 1 && (args[0].StartsWith("-help") || args[0].StartsWith("--help")))
-            {
-                var defaults = Default();
+            var defaults = Default();
 
-                var builder = new StringBuilder();
-                builder.AppendLine("Usage:");
-                // TODO: Shouldn't this be dotnet run instead of dotnet exec?
-                builder.AppendLine(" dotnet exec <Stratis.StratisD/BitcoinD.dll> [arguments]");
-                builder.AppendLine();
-                builder.AppendLine("Command line arguments:");
-                builder.AppendLine();
-                builder.AppendLine($"-help/--help              Show this help.");
-                builder.AppendLine($"-conf=<Path>              Path to the configuration file. Default {defaults.ConfigurationFile}.");
-                builder.AppendLine($"-datadir=<Path>           Path to the data directory. Default {defaults.DataDir}.");
-                builder.AppendLine($"-testnet                  Use the testnet chain.");
-                builder.AppendLine($"-regtest                  Use the regtestnet chain.");
-                builder.AppendLine($"-acceptnonstdtxn=<0 or 1> Accept non-standard transactions. Default {defaults.RequireStandard}.");
-                builder.AppendLine($"-maxtipage=<number>       Max tip age. Default {network.MaxTipAge}.");
-                builder.AppendLine($"-connect=<ip:port>        Specified node to connect to. Can be specified multiple times.");
-                builder.AppendLine($"-addnode=<ip:port>        Add a node to connect to and attempt to keep the connection open. Can be specified multiple times.");
-                builder.AppendLine($"-whitebind=<ip:port>      Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6. Can be specified multiple times.");
-                builder.AppendLine($"-externalip=<ip>          Specify your own public address.");
-                builder.AppendLine($"-synctime=<0 or 1>        Sync with peers. Default 1.");
-                builder.AppendLine($"-checkpoints=<0 or 1>     Use checkpoints. Default 1.");
-                builder.AppendLine($"-mintxfee=<number>        Minimum fee rate. Defaults to network specific value.");
-                builder.AppendLine($"-fallbackfee=<number>     Fallback fee rate. Defaults to network specific value.");
-                builder.AppendLine($"-minrelaytxfee=<number>   Minimum relay fee rate. Defaults to network specific value.");
-                builder.AppendLine($"-bantime=<number>         Number of seconds to keep misbehaving peers from reconnecting (Default 24-hour ban).");
-                builder.AppendLine($"-assumevalid=<hex>        If this block is in the chain assume that it and its ancestors are valid and potentially skip their script verification(0 to verify all). Defaults to network specific value.");
+            var builder = new StringBuilder();
+            builder.AppendLine("Usage:");
+            // TODO: Shouldn't this be dotnet run instead of dotnet exec?
+            builder.AppendLine(" dotnet exec <Stratis.StratisD/BitcoinD.dll> [arguments]");
+            builder.AppendLine();
+            builder.AppendLine("Command line arguments:");
+            builder.AppendLine();
+            builder.AppendLine($"-help/--help              Show this help.");
+            builder.AppendLine($"-conf=<Path>              Path to the configuration file. Default {defaults.ConfigurationFile}.");
+            builder.AppendLine($"-datadir=<Path>           Path to the data directory. Default {defaults.DataDir}.");
+            builder.AppendLine($"-testnet                  Use the testnet chain.");
+            builder.AppendLine($"-regtest                  Use the regtestnet chain.");
+            builder.AppendLine($"-acceptnonstdtxn=<0 or 1> Accept non-standard transactions. Default {defaults.RequireStandard}.");
+            builder.AppendLine($"-maxtipage=<number>       Max tip age. Default {network.MaxTipAge}.");
+            builder.AppendLine($"-connect=<ip:port>        Specified node to connect to. Can be specified multiple times.");
+            builder.AppendLine($"-addnode=<ip:port>        Add a node to connect to and attempt to keep the connection open. Can be specified multiple times.");
+            builder.AppendLine($"-whitebind=<ip:port>      Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6. Can be specified multiple times.");
+            builder.AppendLine($"-externalip=<ip>          Specify your own public address.");
+            builder.AppendLine($"-synctime=<0 or 1>        Sync with peers. Default 1.");
+            builder.AppendLine($"-mintxfee=<number>        Minimum fee rate. Defaults to network specific value.");
+            builder.AppendLine($"-fallbackfee=<number>     Fallback fee rate. Defaults to network specific value.");
+            builder.AppendLine($"-minrelaytxfee=<number>   Minimum relay fee rate. Defaults to network specific value.");
+            builder.AppendLine($"-bantime=<number>         Number of seconds to keep misbehaving peers from reconnecting (Default 24-hour ban).");
 
-                defaults.Logger.LogInformation(builder.ToString());
-
-                return true;
-            }
-
-            return false;
+            defaults.Logger.LogInformation(builder.ToString());
         }
     }
 }

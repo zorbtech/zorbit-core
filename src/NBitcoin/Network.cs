@@ -137,6 +137,9 @@ namespace NBitcoin
         {
             this.BuriedDeployments = new BuriedDeploymentsArray(this);
             this.BIP9Deployments = new BIP9DeploymentsArray(this);
+            
+            if (BlockHeader.PowProvider != null)
+                this.GetPoWHash = (n, h) => BlockHeader.PowProvider.Hash(h.ToBytes(options: n));
         }
 
         public BuriedDeploymentsArray BuriedDeployments { get; }
@@ -262,6 +265,9 @@ namespace NBitcoin
             }
         }
 
+        /// <summary> Maximal value for the calculated time offset. If the value is over this limit, the time syncing feature will be switched off. </summary>
+        public int MaxTimeOffsetSeconds { get; private set; }
+
         /// <summary>Maximum tip age in seconds to consider node in initial block download.</summary>
         public int MaxTipAge { get; private set; }
 
@@ -366,6 +372,7 @@ namespace NBitcoin
 
             NetworksContainer.TryAdd(network.Name.ToLowerInvariant(), network);
 
+            network.MaxTimeOffsetSeconds = builder.MaxTimeOffsetSeconds;
             network.MaxTipAge = builder.MaxTipAge;
             network.MinTxFee = builder.MinTxFee;
             network.FallbackFee = builder.FallbackFee;

@@ -194,7 +194,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         }
 
         /// <inheritdoc />
-        public Mnemonic CreateWallet(string password, string name, string passphrase = null, string mnemonicList = null)
+        public Mnemonic CreateWallet(string password, string name, string passphrase = null, string mnemonicList = null, bool segwit = false)
         {
             Guard.NotEmpty(password, nameof(password));
             Guard.NotEmpty(name, nameof(name));
@@ -218,7 +218,7 @@ namespace Stratis.Bitcoin.Features.Wallet
             // Generate multiple accounts and addresses from the get-go.
             for (int i = 0; i < WalletCreationAccountsCount; i++)
             {
-                HdAccount account = wallet.AddNewAccount(password, this.coinType, this.dateTimeProvider.GetTimeOffset());
+                HdAccount account = wallet.AddNewAccount(password, this.coinType, this.dateTimeProvider.GetTimeOffset(), segwit);
                 account.CreateAddresses(this.network, UnusedAddressesBuffer);
                 account.CreateAddresses(this.network, UnusedAddressesBuffer, true);
             }
@@ -273,7 +273,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         }
 
         /// <inheritdoc />
-        public Wallet RecoverWallet(string password, string name, string mnemonic, DateTime creationTime, string passphrase = null)
+        public Wallet RecoverWallet(string password, string name, string mnemonic, DateTime creationTime, string passphrase = null, bool segwit = false)
         {
             Guard.NotEmpty(password, nameof(password));
             Guard.NotEmpty(name, nameof(name));
@@ -308,7 +308,7 @@ namespace Stratis.Bitcoin.Features.Wallet
             // Generate multiple accounts and addresses from the get-go.
             for (int i = 0; i < WalletRecoveryAccountsCount; i++)
             {
-                HdAccount account = wallet.AddNewAccount(password, this.coinType, this.dateTimeProvider.GetTimeOffset());
+                HdAccount account = wallet.AddNewAccount(password, this.coinType, this.dateTimeProvider.GetTimeOffset(), segwit);
                 account.CreateAddresses(this.network, UnusedAddressesBuffer);
                 account.CreateAddresses(this.network, UnusedAddressesBuffer, true);
             }
@@ -1221,7 +1221,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         {
             this.logger.LogTrace("({0}:'{1}')", nameof(walletName), walletName);
 
-            Wallet wallet = this.Wallets.SingleOrDefault(w => w.Name == walletName);
+            Wallet wallet = this.Wallets.SingleOrDefault(w => w.Name.Equals(walletName, StringComparison.InvariantCultureIgnoreCase));
             if (wallet == null)
             {
                 this.logger.LogTrace("(-)[NOT_FOUND]");

@@ -9,7 +9,7 @@ namespace NBitcoin
     /// </summary>
     public class BitcoinPubKeyAddress : BitcoinAddress, IBase58Data
     {
-        public BitcoinPubKeyAddress(string base58, Network expectedNetwork = null)
+        public BitcoinPubKeyAddress(string base58, Network expectedNetwork)
             : base(Validate(base58, ref expectedNetwork), expectedNetwork)
         {
             var decoded = Encoders.Base58Check.DecodeData(base58);
@@ -27,15 +27,20 @@ namespace NBitcoin
         {
             if (base58 == null)
                 throw new ArgumentNullException("base58");
-            var data = Encoders.Base58Check.DecodeData(base58);
-            var versionBytes = expectedNetwork.GetVersionBytes(Base58Type.PUBKEY_ADDRESS, false);
-            if (versionBytes != null && data.StartWith(versionBytes))
+
+            try
             {
-                if (data.Length == versionBytes.Length + 20)
+                var data = Encoders.Base58Check.DecodeData(base58);
+                var versionBytes = expectedNetwork.GetVersionBytes(Base58Type.PUBKEY_ADDRESS, false);
+                if (versionBytes != null && data.StartWith(versionBytes))
                 {
-                    return true;
+                    if (data.Length == versionBytes.Length + 20)
+                    {
+                        return true;
+                    }
                 }
             }
+            catch (FormatException) { }
             return false;
         }
 

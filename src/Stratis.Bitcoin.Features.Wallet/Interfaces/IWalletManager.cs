@@ -44,8 +44,9 @@ namespace Stratis.Bitcoin.Features.Wallet.Interfaces
         /// <param name="name">The name of the wallet.</param>
         /// <param name="passphrase">The passphrase used in the seed.</param>
         /// <param name="mnemonic">The user's mnemonic for the wallet.</param>
+        /// <param name="segwit">The wallet should use segwit addresses.</param>
         /// <returns>A mnemonic defining the wallet's seed used to generate addresses.</returns>
-        Mnemonic CreateWallet(string password, string name, string passphrase = null, string mnemonic = null);
+        Mnemonic CreateWallet(string password, string name, string passphrase = null, string mnemonic = null, bool segwit = false);
 
         /// <summary>
         /// Loads a wallet from a file.
@@ -63,8 +64,9 @@ namespace Stratis.Bitcoin.Features.Wallet.Interfaces
         /// <param name="mnemonic">The user's mnemonic for the wallet.</param>
         /// <param name="passphrase">The passphrase used in the seed.</param>
         /// <param name="creationTime">The date and time this wallet was created.</param>
+        /// <param name="segwit">The wallet should use segwit addresses.</param>
         /// <returns>The recovered wallet.</returns>
-        Wallet RecoverWallet(string password, string name, string mnemonic, DateTime creationTime, string passphrase = null);
+        Wallet RecoverWallet(string password, string name, string mnemonic, DateTime creationTime, string passphrase = null, bool segwit = false);
 
         /// <summary>
         /// Deletes a wallet.

@@ -37,6 +37,8 @@ namespace Stratis.Bitcoin.Features.Wallet.Models
 
         [Required(ErrorMessage = "The name of the wallet to create is missing.")]
         public string Name { get; set; }
+
+        public bool Segwit { get; set; }
     }
 
     public class WalletLoadRequest : RequestModel
@@ -67,6 +69,8 @@ namespace Stratis.Bitcoin.Features.Wallet.Models
 
         [JsonConverter(typeof(IsoDateTimeConverter))]
         public DateTime CreationDate { get; set; }
+
+        public bool Segwit { get; set; }
     }
 
     public class WalletHistoryRequest : RequestModel
