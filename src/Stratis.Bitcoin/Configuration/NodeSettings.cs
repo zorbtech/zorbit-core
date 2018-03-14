@@ -167,6 +167,8 @@ namespace Stratis.Bitcoin.Configuration
 
         public bool TorEnabled { get; private set; }
 
+        public int TorSocksPort { get; private set; }
+
         /// <summary>
         /// Initializes default configuration.
         /// </summary>
@@ -243,6 +245,8 @@ namespace Stratis.Bitcoin.Configuration
 
             this.TorEnabled = config.GetOrDefault("torenabled", false);
             this.Logger.LogDebug("TorEnabled set to {0}", this.TorEnabled);
+            this.TorSocksPort = config.GetOrDefault("torsocksport", 9050);
+            this.Logger.LogDebug("TorSocksPort set to {0}", this.TorSocksPort);
 
             // Add a prefix set by the user to the agent. This will allow people running nodes to
             // identify themselves if they wish. The prefix is limited to 10 characters.

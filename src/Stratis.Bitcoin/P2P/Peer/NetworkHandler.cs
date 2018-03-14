@@ -188,8 +188,7 @@
 
         private Task<TotClient> GetNewTotClient()
         {
-            // change this to retrieve SOCKS port from tor config - add to NodeSettings?
-            var serverEndPoint = new IPEndPoint(IPAddress.Loopback, 9050);
+            var serverEndPoint = new IPEndPoint(IPAddress.Loopback, this.NodeSettings.TorSocksPort);
             var socksManager = new TorSocks5Manager(serverEndPoint);
 
             return socksManager.EstablishTotConnectionAsync(this.RemoteEndPoint);
