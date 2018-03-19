@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NBitcoin;
@@ -27,6 +28,14 @@ namespace Zorbit.ZorbitD
         {
             try
             {
+                args = new List<string>(args)
+                {
+                    "-testnet",
+                    //"mine=1",
+                    //"mineaddress=tHx4uzn5fGgazvvAh42e2xzPiSyo2VwJ8D"
+                    "-addnode=51.141.91.192"
+                }.ToArray();
+
                 Network network = args.Contains("-testnet") ? Network.ZorbitTest : Network.ZorbitMain;
                 NodeSettings nodeSettings = new NodeSettings(network, ProtocolVersion.ALT_PROTOCOL_VERSION, args:args, loadConfiguration:false);
 
