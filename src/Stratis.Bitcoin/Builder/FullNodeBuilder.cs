@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using NBitcoin;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Builder.Feature;
 using Stratis.Bitcoin.Configuration;
+using Stratis.Bitcoin.P2P.Peer;
 using Stratis.Bitcoin.Utilities;
 
 namespace Stratis.Bitcoin.Builder
@@ -159,6 +161,29 @@ namespace Stratis.Bitcoin.Builder
             this.fullNodeBuilt = true;
 
             this.NodeSettings?.LoadConfiguration();
+
+            if(this.NodeSettings != null && this.NodeSettings.TorEnabled)
+            {
+                var networkHandler = new NetworkHandler(this.NodeSettings);
+                try
+                {
+                    var torInitialised = networkHandler.InitialiseTor();
+                    if (torInitialised)
+                    {
+                        this.NodeSettings.Logger.LogInformation("Tor Initialised Successfully");
+                    }
+                    else
+                    {
+                        throw new NodeBuilderException("Tor failed to initialise. Please check that Tor is installed.");
+                    }
+                }
+                catch(Win32Exception ex)
+                {
+                    var message = string.Format("Exception while initialising Tor: {0}. Please check that Tor is installed.", ex.Message.ToString());
+                    this.NodeSettings.Logger.LogCritical(message);
+                    throw new NodeBuilderException(message);
+                }
+            }
 
             this.Services = this.BuildServices();
 

@@ -165,6 +165,10 @@ namespace Stratis.Bitcoin.Configuration
         /// <summary><c>true</c> to sync time with other peers and calculate adjusted time, <c>false</c> to use our system clock only.</summary>
         public bool SyncTimeEnabled { get; set; }
 
+        public bool TorEnabled { get; private set; }
+
+        public int TorSocksPort { get; private set; }
+
         /// <summary>
         /// Initializes default configuration.
         /// </summary>
@@ -239,11 +243,16 @@ namespace Stratis.Bitcoin.Configuration
             this.SyncTimeEnabled = config.GetOrDefault<bool>("synctime", true);
             this.Logger.LogDebug("Time synchronization with peers is {0}.", this.SyncTimeEnabled ? "enabled" : "disabled");
 
+            this.TorEnabled = config.GetOrDefault("torenabled", false);
+            this.Logger.LogDebug("TorEnabled set to {0}", this.TorEnabled);
+            this.TorSocksPort = config.GetOrDefault("torsocksport", 9050);
+            this.Logger.LogDebug("TorSocksPort set to {0}", this.TorSocksPort);
+
             // Add a prefix set by the user to the agent. This will allow people running nodes to
             // identify themselves if they wish. The prefix is limited to 10 characters.
             string agentPrefix = config.GetOrDefault("agentprefix", string.Empty);
             agentPrefix = agentPrefix.Substring(0, Math.Min(10, agentPrefix.Length));
-            this.Agent = string.IsNullOrEmpty(agentPrefix) ? this.Agent : $"{agentPrefix}-{this.Agent}"; 
+            this.Agent = string.IsNullOrEmpty(agentPrefix) ? this.Agent : $"{agentPrefix}-{this.Agent}";
 
             return this;
         }

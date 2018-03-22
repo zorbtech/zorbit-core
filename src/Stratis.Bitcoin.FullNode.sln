@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2024
+VisualStudioVersion = 15.0.27130.2020
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "global", "global", "{5B331FD3-D493-46A9-928B-B786FC6F3103}"
 	ProjectSection(SolutionItems) = preProject
@@ -88,6 +88,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stratis.StratisDnsD", "Stratis.StratisDnsD\Stratis.StratisDnsD.csproj", "{978482B2-AE17-421E-AD6F-ED9667C6B8A1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zorbit.ZorbitD", "Zorbit.ZorbitD\Zorbit.ZorbitD.csproj", "{84D159B8-D370-412F-A0CB-F93DBA4211D1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotNetTor", "DotNetTor\DotNetTor.csproj", "{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotNetTor.Tests", "DotNetTor.Tests\DotNetTor.Tests.csproj", "{6D29081D-5E23-4114-A6E7-E751C1C452F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -227,6 +231,14 @@ Global
 		{84D159B8-D370-412F-A0CB-F93DBA4211D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84D159B8-D370-412F-A0CB-F93DBA4211D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84D159B8-D370-412F-A0CB-F93DBA4211D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D29081D-5E23-4114-A6E7-E751C1C452F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D29081D-5E23-4114-A6E7-E751C1C452F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D29081D-5E23-4114-A6E7-E751C1C452F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D29081D-5E23-4114-A6E7-E751C1C452F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -258,6 +270,8 @@ Global
 		{59F274B7-0FC5-4AD6-A8AE-27BF6F15CC12} = {EAE139C2-B19C-4905-9117-8A4068ABD3D2}
 		{6181B889-81B0-4A1E-A29F-E20DCD8BFC1F} = {15D29FFD-6142-4DC5-AFFD-10BA0CA55C45}
 		{CB7A2800-8E98-4CD5-A88A-832E03AF7ABF} = {EAE139C2-B19C-4905-9117-8A4068ABD3D2}
+		{5390D855-5FE3-44FA-89C3-0EA4E4F4A1DB} = {1B9A916F-DDAC-4675-B424-EDEDC1A58231}
+		{6D29081D-5E23-4114-A6E7-E751C1C452F2} = {1B9A916F-DDAC-4675-B424-EDEDC1A58231}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6C780ABA-5872-4B83-AD3F-A5BD423AD907}
