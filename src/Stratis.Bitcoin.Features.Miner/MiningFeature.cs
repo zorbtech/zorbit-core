@@ -271,9 +271,7 @@ namespace Stratis.Bitcoin.Features.Miner
                         services.AddSingleton<IAssemblerFactory, PowPosAssemblerFactory>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
-                        services.AddSingleton<IWalletManager, WalletManager>();
                         services.AddSingleton<MinerSettings>(new MinerSettings(setup));
-                        services.AddSingleton<ITimeSyncBehaviorState, TimeSyncBehaviorState>();
                     });
             });
 
