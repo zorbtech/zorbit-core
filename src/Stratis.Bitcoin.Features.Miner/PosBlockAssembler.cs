@@ -14,7 +14,7 @@ namespace Stratis.Bitcoin.Features.Miner
         protected readonly ILogger logger;
 
         /// <summary>Database of stake related data for the current blockchain.</summary>
-        protected readonly StakeChain stakeChain;
+        protected readonly IStakeChain stakeChain;
 
         /// <summary>Provides functionality for checking validity of PoS blocks.</summary>
         protected readonly IStakeValidator stakeValidator;
@@ -25,7 +25,7 @@ namespace Stratis.Bitcoin.Features.Miner
             MempoolSchedulerLock mempoolLock,
             ITxMempool mempool,
             IDateTimeProvider dateTimeProvider,
-            StakeChain stakeChain,
+            IStakeChain stakeChain,
             IStakeValidator stakeValidator,
             ChainedBlock chainTip,
             ILoggerFactory loggerFactory,
