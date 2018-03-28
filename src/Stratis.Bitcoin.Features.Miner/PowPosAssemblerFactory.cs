@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using NBitcoin;
+using Stratis.Bitcoin.Features.Consensus;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
 using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.MemoryPool.Interfaces;
@@ -17,7 +18,7 @@ namespace Stratis.Bitcoin.Features.Miner
             IStakeValidator stakeValidator,
             IDateTimeProvider dateTimeProvider,
             ILoggerFactory loggerFactory,
-            StakeChain stakeChain = null) : base(consensusLoop, network, mempoolScheduler, mempool, stakeValidator, dateTimeProvider, loggerFactory, stakeChain)
+            IStakeChain stakeChain = null) : base(consensusLoop, network, mempoolScheduler, mempool, stakeValidator, dateTimeProvider, loggerFactory, stakeChain)
         {
         }
 
