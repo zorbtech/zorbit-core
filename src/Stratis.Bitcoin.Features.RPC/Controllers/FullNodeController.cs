@@ -4,9 +4,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using NBitcoin.RPC;
 using Newtonsoft.Json.Linq;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
+using Stratis.Bitcoin.Features.BlockStore;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
 using Stratis.Bitcoin.Features.RPC.Models;
 using Stratis.Bitcoin.Interfaces;
@@ -170,6 +172,32 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             return model;
         }
 
+        [ActionName("getblockchaininfo")]
+        [ActionDescription("Get ")]
+        public BlockChainInfo GetBlockChainInfo()
+        {
+            var chainInfo = new BlockChainInfo()
+            {
+                Chain = this.Chain.Network.ToString(),
+                Blocks = this.ChainState.ConsensusTip.Height,
+                // Headers = this.ChainState.ConsensusTip.ToString(),
+                BestBlockHash = this.ChainState.ConsensusTip.HashBlock.ToString(),
+                Difficulty = this.GetNetworkDifficulty()?.Difficulty ?? 0,
+                MedianTime = this.Chain.Tip.GetMedianTimePast().ToUnixTimeSeconds(),
+                VerificationProgress = this.GetVerificationProgress(),
+                Pruned = this.GetPruneStatus()
+            };
+
+            return chainInfo;
+        }
+
+        [ActionName("getdifficulty")]
+        [ActionDescription("Get the current proof of work difficulty")]
+        public double GetDifficulty()
+        {
+            return this.GetNetworkDifficulty()?.Difficulty ?? 0;
+        }
+
         /// <summary>
         /// Implements getblockheader RPC call.
         /// </summary>
@@ -255,6 +283,24 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
         private Target GetNetworkDifficulty()
         {
             return this.networkDifficulty?.GetNetworkDifficulty();
+        }
+
+        private double GetVerificationProgress()
+        {
+            if (this.Chain.Tip == null)
+                return 0.0;
+
+            // requires total transaction count,
+            // timestamp of last known number of transactions,
+            // estimated number of transactions per second since timestamp
+
+            return 1.0;
+        }
+
+        private bool GetPruneStatus()
+        {
+            StoreSettings blockSettings = (StoreSettings)this.FullNode.Services.ServiceProvider.GetService(typeof(StoreSettings));
+            return blockSettings.Prune;
         }
     }
 }
