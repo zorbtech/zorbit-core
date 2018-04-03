@@ -36,7 +36,7 @@ namespace NBitcoin.RPC
         network            clearbanned
 
         ------------------ Block chain and UTXO
-        blockchain         getblockchaininfo
+        blockchain         getblockchaininfo            TODO
         blockchain         getbestblockhash             Yes
         blockchain         getblockcount                Yes
         blockchain         getblock                     Yes
@@ -52,11 +52,11 @@ namespace NBitcoin.RPC
         blockchain         verifychain
 
         ------------------ Mining
-        mining             getblocktemplate
-        mining             getmininginfo
-        mining             getnetworkhashps
-        mining             prioritisetransaction
-        mining             submitblock
+        mining             getblocktemplate             TODO
+        mining             getmininginfo                TODO
+        mining             getnetworkhashps             TODO
+        mining             prioritisetransaction        TODO
+        mining             submitblock                  TODO
 
         ------------------ Coin generation
         generating         getgenerate
@@ -930,6 +930,11 @@ namespace NBitcoin.RPC
 #endregion
 
 #region Block chain and UTXO
+
+        public double GetDifficulty()
+        {
+            return (double)SendCommand(RPCOperations.getdifficulty).Result;
+        }
 
         public uint256 GetBestBlockHash()
         {
