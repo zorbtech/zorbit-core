@@ -179,9 +179,9 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             var chainInfo = new BlockChainInfo()
             {
                 Chain = this.Chain.Network.ToString(),
-                Blocks = this.ChainState.ConsensusTip.Height,
-                // Headers = this.ChainState.ConsensusTip.ToString(),
-                BestBlockHash = this.ChainState.ConsensusTip.HashBlock.ToString(),
+                Blocks = this.ChainState?.ConsensusTip?.Height ?? 0,
+                Headers = this.consensusLoop?.Chain?.Height ?? -1,
+                BestBlockHash = this.ChainState?.ConsensusTip?.HashBlock?.ToString(),
                 Difficulty = this.GetNetworkDifficulty()?.Difficulty ?? 0,
                 MedianTime = this.Chain.Tip.GetMedianTimePast().ToUnixTimeSeconds(),
                 VerificationProgress = this.GetVerificationProgress(),
@@ -287,14 +287,35 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
 
         private double GetVerificationProgress()
         {
-            if (this.Chain.Tip == null)
+            if (this.Chain?.Tip?.Header == null)
                 return 0.0;
 
             // requires total transaction count,
             // timestamp of last known number of transactions,
             // estimated number of transactions per second since timestamp
+            // Genesis.Header.Time = ChainTxData.nTime = timestamp of last known number of transactions?
+            // Genesis.Header.Nonce = ChainTxData.nTxCount = requires total transaction count?
+            // Genesis.Header.Bits = ChainTxData.dTxRate = estimated number of transactions per second since timestamp?
 
-            return 1.0;
+
+            var data = this.Network.GetGenesis().Header;
+
+            var now = DateTime.Now.ToUnixTimestamp();
+
+            double txTotal;
+
+            var tipData = this.Chain.Tip.Header;
+
+            if (tipData.Nonce < data.Nonce)
+            {
+                txTotal = data.Nonce + (now - data.Time) * data.Bits;
+            }
+            else
+            {
+                txTotal = tipData.Nonce + (now - tipData.Time) * data.Bits;
+            }
+
+            return tipData.Nonce / txTotal;
         }
 
         private bool GetPruneStatus()

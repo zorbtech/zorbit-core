@@ -52,11 +52,11 @@ namespace NBitcoin.RPC
         blockchain         verifychain
 
         ------------------ Mining
-        mining             getblocktemplate
-        mining             getmininginfo
-        mining             getnetworkhashps
-        mining             prioritisetransaction
-        mining             submitblock
+        mining             getblocktemplate             TODO
+        mining             getmininginfo                TODO
+        mining             getnetworkhashps             TODO
+        mining             prioritisetransaction        TODO
+        mining             submitblock                  TODO
 
         ------------------ Coin generation
         generating         getgenerate
@@ -930,6 +930,34 @@ namespace NBitcoin.RPC
 #endregion
 
 #region Block chain and UTXO
+
+        public BlockChainInfo GetBlockChainInfo()
+        {
+            var response = SendCommand(RPCOperations.getblockchaininfo);
+            return ParseBlockChainInfo(response);
+        }
+
+        private BlockChainInfo ParseBlockChainInfo(RPCResponse response)
+        {
+            var blockChainInfo = new BlockChainInfo()
+            {
+                Chain = (string)response.Result["chain"],
+                Blocks = (int)response.Result["blocks"],
+                Headers = (int)response.Result["headers"],
+                BestBlockHash = (string)response.Result["bestBlockHash"],
+                Difficulty = double.Parse((string)response.Result["difficulty"]),
+                MedianTime = long.Parse((string)response.Result["medianTime"]),
+                Pruned = (bool)response.Result["pruned"],
+                VerificationProgress = double.Parse((string)response.Result["verificationProgress"])
+            };
+
+            return blockChainInfo;
+        }
+
+        public double GetDifficulty()
+        {
+            return (double)SendCommand(RPCOperations.getdifficulty).Result;
+        }
 
         public uint256 GetBestBlockHash()
         {
