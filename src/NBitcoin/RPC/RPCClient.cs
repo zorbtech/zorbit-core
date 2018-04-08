@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using NBitcoin.DataEncoders;
+using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -52,7 +53,7 @@ namespace NBitcoin.RPC
         blockchain         verifychain
 
         ------------------ Mining
-        mining             getblocktemplate             TODO
+        mining             getblocktemplate
         mining             getmininginfo                TODO
         mining             getnetworkhashps             TODO
         mining             prioritisetransaction        TODO
@@ -1369,7 +1370,71 @@ namespace NBitcoin.RPC
             return SendCommand(RPCOperations.settxfee, new[] { feeRate.FeePerK.ToString() }).Result.ToString() == "true";
         }
 
-#endregion
+        #endregion
+
+#region Mining
+
+        public BlockTemplate GetBlockTemplate()
+        {
+            var result = SendCommand(RPCOperations.getblocktemplate).Result;
+            return ParseBlockTemplate(result);
+        }
+
+        private BlockTemplate ParseBlockTemplate(JToken result)
+        {
+            var blockTemplate = new BlockTemplate()
+            {
+                Version = uint.Parse((string)result["version"]),
+                PreviousBlockhash = (string)result["previousBlockHash"],
+                CoinbaseValue = (long)result["coinbaseValue"],
+                Target = (string)result["target"],
+                NonceRange = (string)result["nonceRange"],
+                CurTime = uint.Parse((string)result["curTime"]),
+                Bits = (string)result["bits"],
+                Height = uint.Parse((string)result["height"]),
+                Transactions = ParseTransactions(result["transactions"]),
+                CoinbaseAux = ParseCoinbaseAux(result["coinbaseAux"]),
+                DefaultWitnessCommitment = (string)result["defaultWitnessCommitment"]
+            };
+
+            return blockTemplate;
+        }
+
+        private BitcoinBlockTransaction[] ParseTransactions(JToken jToken)
+        {
+            if (jToken == null)
+                return null;
+
+            var transactions = new List<BitcoinBlockTransaction>();
+
+            foreach(JToken token in jToken.Children())
+            {
+                var transaction = new BitcoinBlockTransaction()
+                {
+                    Data = (string)token["data"],
+                    TxId = (string)token["txId"],
+                    Hash = (string)token["hash"],
+                    Fee = decimal.Parse((string)token["fee"])
+                };
+            }
+
+            return transactions.ToArray();
+        }
+
+        private CoinbaseAux ParseCoinbaseAux(JToken jToken)
+        {
+            if (jToken == null)
+                return null;
+
+            var coinbaseAux = new CoinbaseAux()
+            {
+                Flags = (string)jToken["flags"]
+            };
+
+            return coinbaseAux;
+        }
+
+        #endregion
 
         public async Task<uint256[]> GenerateAsync(int nBlocks)
         {

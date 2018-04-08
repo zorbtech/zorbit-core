@@ -2,15 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using NBitcoin.DataEncoders;
+using NBitcoin.RPC.Dtos;
+using Stratis.Bitcoin.Base;
+using Stratis.Bitcoin.Base.Deployments;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
 using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
 using Stratis.Bitcoin.Utilities;
+using BlockTemplateResponse = NBitcoin.RPC.Dtos.BlockTemplate;
 
 namespace Stratis.Bitcoin.Features.Miner
 {
@@ -35,6 +41,14 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <summary>Wallet manager.</summary>
         private readonly IWalletManager walletManager;
 
+        private readonly IAssemblerFactory blockAssemblerFactory;
+
+        private readonly IChainState chainState;
+
+        private readonly NodeDeployments nodeDeployments;
+
+        private readonly MinerSettings minerSettings;
+
         /// <summary>
         /// Initializes a new instance of the object.
         /// </summary>
@@ -43,7 +57,8 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <param name="loggerFactory">Factory to be used to create logger for the node.</param>
         /// <param name="walletManager">The wallet manager.</param>
         /// <param name="posMinting">PoS staker or null if PoS staking is not enabled.</param>
-        public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager, IPosMinting posMinting = null) : base(fullNode: fullNode)
+        public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager,
+            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, IPosMinting posMinting = null) : base(fullNode: fullNode)
         {
             Guard.NotNull(powMining, nameof(powMining));
             Guard.NotNull(fullNode, nameof(fullNode));
@@ -55,6 +70,11 @@ namespace Stratis.Bitcoin.Features.Miner
             this.walletManager = walletManager;
             this.powMining = powMining;
             this.posMinting = posMinting;
+            this.blockAssemblerFactory = blockAssemblerFactory;
+
+            this.minerSettings = this.fullNode.NodeService<MinerSettings>();
+            this.chainState = this.fullNode.NodeService<IChainState>();
+            this.nodeDeployments = this.fullNode.NodeService<NodeDeployments>();
         }
 
         /// <summary>
@@ -136,6 +156,92 @@ namespace Stratis.Bitcoin.Features.Miner
 
             this.logger.LogTrace("(-):{0}", model);
             return model;
+        }
+
+        [ActionName("getblocktemplate")]
+        [ActionDescription("Get the template for PoW mining blocks")]
+        public BlockTemplateResponse GetBlockTemplate(BlockTemplateRequest request)
+        {
+            var template = this.blockAssemblerFactory.Create(this.chainState.ConsensusTip).CreateNewBlock(BitcoinAddress.Create(this.minerSettings.MineAddress, this.fullNode.Network).ScriptPubKey);
+            var blockTemplate = new BlockTemplateResponse
+            {
+                Version = (uint)template.Block.Header.Version,
+                PreviousBlockhash = this.chainState?.ConsensusTip?.HashBlock?.ToString(),
+                CoinbaseValue = template.Block.Transactions[0].Outputs[0].Value,
+                Target = template.Block.Header.Bits.ToUInt256().ToString(),
+                NonceRange = "00000000ffffffff",
+                CurTime = (uint)DateTimeOffset.Now.ToUnixTimeSeconds(),
+                Bits = template.Block.Header.Bits.ToString(),
+                Height = (uint)(this.chainState?.ConsensusTip?.Height + 1 ?? 1),
+                Transactions = this.GetTransactions(template),
+                CoinbaseAux = this.GetCoinbaseFlags(),
+                DefaultWitnessCommitment = this.GetWitnessCommitment(template, request.Rules)
+            };
+
+            return blockTemplate;
+        }
+
+        private BitcoinBlockTransaction[] GetTransactions(BlockTemplate blockTemplate)
+        {
+            var transactions = new List<BitcoinBlockTransaction>();
+
+            var i = 0;
+            foreach(var tx in blockTemplate.Block.Transactions)
+            {
+                i++;
+
+                if (tx.IsCoinBase)
+                    continue;
+
+                var transaction = new BitcoinBlockTransaction()
+                {
+                    Data = tx.ToHex(),
+                    TxId = this.GetHex(tx.GetHash().ToString()),
+                    Hash = this.GetHex(tx.GetWitHash().ToString()),
+                    Fee = blockTemplate.VTxFees[i - 1].ToDecimal(MoneyUnit.Satoshi)
+                };
+
+                transactions.Add(transaction);
+            }
+
+            return transactions.ToArray();
+        }
+
+        private CoinbaseAux GetCoinbaseFlags()
+        {
+            if (this.chainState == null || this.chainState.ConsensusTip == null)
+                return null;
+
+            var flagsString = this.nodeDeployments.GetFlags(this.chainState.ConsensusTip).ScriptFlags.ToString();
+            var flagsHex = this.GetHex(flagsString);
+
+            var aux = new CoinbaseAux()
+            {
+                Flags = flagsHex
+            };
+
+            return aux;
+        }
+
+        private string GetWitnessCommitment(BlockTemplate template, string[] rules)
+        {
+            if (rules == null || rules.Length == 0)
+                return null;
+
+            if (!string.IsNullOrEmpty(template.CoinbaseCommitment) && rules.Any(x => x.Contains(BIP9Deployments.Segwit.ToString(), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                // CoinbaseCommitment not yet implemented in Stratis codebase
+                return this.GetHex(template.CoinbaseCommitment);
+            }
+
+            return null;
+        }
+
+        private string GetHex(string value)
+        {
+            var bytes = Encoding.Default.GetBytes(value);
+            var hexString = Encoders.Hex.EncodeData(bytes);
+            return hexString;
         }
 
         /// <summary>
