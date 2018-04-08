@@ -12,6 +12,7 @@ using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
 using Stratis.Bitcoin.Features.Wallet.Tests;
+using Stratis.Bitcoin.Interfaces;
 using Stratis.Bitcoin.Tests.Logging;
 using Xunit;
 
@@ -28,6 +29,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         private Mock<IPowMining> powMining;
         private Mock<IAssemblerFactory> assemblerFactory;
         private Mock<MinerSettings> minerSettings;
+        private Mock<INetworkDifficulty> networkDifficulty;
+        private Mock<MiningRpcHelper> miningRpcHelper;
 
         public MiningRPCControllerTest(MiningRPCControllerFixture fixture)
         {
@@ -40,7 +43,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
             this.fullNode.Setup(f => f.NodeService<IWalletManager>(false))
                 .Returns(this.walletManager.Object);
 
-            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, this.minerSettings.Object, this.posMinting.Object);
+            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, 
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.posMinting.Object);
         }
 
 
@@ -169,7 +173,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         [Fact]
         public void GetStakingInfo_WithoutPosMinting_ReturnsEmptyStakingInfoModel()
         {
-            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, this.minerSettings.Object, null);
+            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, 
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, null);
 
             var result = this.controller.GetStakingInfo(true);
 

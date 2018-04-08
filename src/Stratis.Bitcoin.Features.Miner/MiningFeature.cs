@@ -209,6 +209,7 @@ namespace Stratis.Bitcoin.Features.Miner
                         services.AddSingleton<IAssemblerFactory, PowAssemblerFactory>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
+                        services.AddSingleton<MiningRpcHelper>();
                         services.AddSingleton<MinerSettings>(new MinerSettings(setup));
 					});
             });
@@ -240,6 +241,7 @@ namespace Stratis.Bitcoin.Features.Miner
                         services.AddSingleton<IAssemblerFactory, PosAssemblerFactory>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
+                        services.AddSingleton<MiningRpcHelper>();
                         services.AddSingleton<MinerSettings>(new MinerSettings(setup));
 					});
             });
@@ -271,6 +273,7 @@ namespace Stratis.Bitcoin.Features.Miner
                         services.AddSingleton<IAssemblerFactory, PowPosAssemblerFactory>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
+                        services.AddSingleton<MiningRpcHelper>();
                         services.AddSingleton<MinerSettings>(new MinerSettings(setup));
                     });
             });

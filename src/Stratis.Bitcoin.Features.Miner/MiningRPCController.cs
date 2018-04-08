@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
-using NBitcoin.DataEncoders;
 using NBitcoin.RPC.Dtos;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Base.Deployments;
@@ -15,6 +13,7 @@ using Stratis.Bitcoin.Features.Miner.Models;
 using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
+using Stratis.Bitcoin.Interfaces;
 using Stratis.Bitcoin.Utilities;
 using BlockTemplateResponse = NBitcoin.RPC.Dtos.BlockTemplate;
 
@@ -45,9 +44,13 @@ namespace Stratis.Bitcoin.Features.Miner
 
         private readonly IChainState chainState;
 
+        private readonly INetworkDifficulty networkDifficulty;
+
         private readonly NodeDeployments nodeDeployments;
 
         private readonly MinerSettings minerSettings;
+
+        private readonly MiningRpcHelper miningRpcHelper;
 
         /// <summary>
         /// Initializes a new instance of the object.
@@ -58,7 +61,7 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <param name="walletManager">The wallet manager.</param>
         /// <param name="posMinting">PoS staker or null if PoS staking is not enabled.</param>
         public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager,
-            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, IPosMinting posMinting = null) : base(fullNode: fullNode)
+            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, INetworkDifficulty networkDifficulty, MiningRpcHelper miningRpcHelper, IPosMinting posMinting = null) : base(fullNode: fullNode)
         {
             Guard.NotNull(powMining, nameof(powMining));
             Guard.NotNull(fullNode, nameof(fullNode));
@@ -71,6 +74,8 @@ namespace Stratis.Bitcoin.Features.Miner
             this.powMining = powMining;
             this.posMinting = posMinting;
             this.blockAssemblerFactory = blockAssemblerFactory;
+            this.networkDifficulty = networkDifficulty;
+            this.miningRpcHelper = miningRpcHelper;
 
             this.minerSettings = this.fullNode.NodeService<MinerSettings>();
             this.chainState = this.fullNode.NodeService<IChainState>();
@@ -181,6 +186,31 @@ namespace Stratis.Bitcoin.Features.Miner
             return blockTemplate;
         }
 
+        [ActionName("getmininginfo")]
+        [ActionDescription("Get mining-related information")]
+        public MiningInfo GetMiningInfo()
+        {
+            var miningInfo = new MiningInfo()
+            {
+                Blocks = this.chainState?.ConsensusTip?.Height ?? 0,
+                CurrentBlockSize = BlockAssembler.lastBlockSize,
+                CurrentBlockWeight = BlockAssembler.lastBlockWeight,
+                Difficulty = this.networkDifficulty?.GetNetworkDifficulty()?.Difficulty ?? 0,
+                Chain = this.fullNode.Network.ToString(),
+                NetworkHashps = this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, -1, this.chainState?.ConsensusTip?.Height ?? 0)
+            };
+
+            return miningInfo;
+        }
+
+        [ActionName("getnetworkhashps")]
+        [ActionDescription("Get the estimated current or historical network hashes per second on the last number of blocks provided")]
+        public double GetNetworkHashps(long lookup, int height)
+        {
+            return this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, lookup, height);
+        }
+        
+
         private BitcoinBlockTransaction[] GetTransactions(BlockTemplate blockTemplate)
         {
             var transactions = new List<BitcoinBlockTransaction>();
@@ -196,8 +226,8 @@ namespace Stratis.Bitcoin.Features.Miner
                 var transaction = new BitcoinBlockTransaction()
                 {
                     Data = tx.ToHex(),
-                    TxId = this.GetHex(tx.GetHash().ToString()),
-                    Hash = this.GetHex(tx.GetWitHash().ToString()),
+                    TxId = this.miningRpcHelper.GetHex(tx.GetHash().ToString()),
+                    Hash = this.miningRpcHelper.GetHex(tx.GetWitHash().ToString()),
                     Fee = blockTemplate.VTxFees[i - 1].ToDecimal(MoneyUnit.Satoshi)
                 };
 
@@ -213,7 +243,7 @@ namespace Stratis.Bitcoin.Features.Miner
                 return null;
 
             var flagsString = this.nodeDeployments.GetFlags(this.chainState.ConsensusTip).ScriptFlags.ToString();
-            var flagsHex = this.GetHex(flagsString);
+            var flagsHex = this.miningRpcHelper.GetHex(flagsString);
 
             var aux = new CoinbaseAux()
             {
@@ -231,17 +261,10 @@ namespace Stratis.Bitcoin.Features.Miner
             if (!string.IsNullOrEmpty(template.CoinbaseCommitment) && rules.Any(x => x.Contains(BIP9Deployments.Segwit.ToString(), StringComparison.InvariantCultureIgnoreCase)))
             {
                 // CoinbaseCommitment not yet implemented in Stratis codebase
-                return this.GetHex(template.CoinbaseCommitment);
+                return this.miningRpcHelper.GetHex(template.CoinbaseCommitment);
             }
 
             return null;
-        }
-
-        private string GetHex(string value)
-        {
-            var bytes = Encoding.Default.GetBytes(value);
-            var hexString = Encoders.Hex.EncodeData(bytes);
-            return hexString;
         }
 
         /// <summary>

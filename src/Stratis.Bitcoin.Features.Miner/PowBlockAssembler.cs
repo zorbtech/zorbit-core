@@ -19,6 +19,12 @@ namespace Stratis.Bitcoin.Features.Miner
         protected ChainedBlock ChainTip { get; set; }
 
         public abstract BlockTemplate CreateNewBlock(Script scriptPubKeyIn, bool fMineWitnessTx = true);
+
+        public static long lastBlockTx = 0;
+
+        public static long lastBlockSize = 0;
+
+        public static long lastBlockWeight = 0;
     }
 
     public class AssemblerOptions
@@ -117,11 +123,6 @@ namespace Stratis.Bitcoin.Features.Miner
         // transactions in the memory pool. When we select transactions from the
         // pool, we select by highest fee rate of a transaction combined with all
         // its ancestors.
-        private static long lastBlockTx = 0;
-
-        private static long lastBlockSize = 0;
-
-        private static long lastBlockWeight = 0;
 
         private static long medianTimePast;
 

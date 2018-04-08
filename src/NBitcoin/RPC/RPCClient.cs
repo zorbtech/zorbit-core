@@ -54,8 +54,8 @@ namespace NBitcoin.RPC
 
         ------------------ Mining
         mining             getblocktemplate
-        mining             getmininginfo                TODO
-        mining             getnetworkhashps             TODO
+        mining             getmininginfo
+        mining             getnetworkhashps
         mining             prioritisetransaction        TODO
         mining             submitblock                  TODO
 
@@ -1380,9 +1380,20 @@ namespace NBitcoin.RPC
             return ParseBlockTemplate(result);
         }
 
+        public MiningInfo GetMiningInfo()
+        {
+            var result = SendCommand(RPCOperations.getmininginfo).Result;
+            return ParseMiningInfo(result);
+        }
+
+        public double GetNetworkHashPs()
+        {
+            return double.Parse(SendCommand(RPCOperations.getnetworkhashps).Result.ToString());
+        }
+
         private BlockTemplate ParseBlockTemplate(JToken result)
         {
-            var blockTemplate = new BlockTemplate()
+            return new BlockTemplate()
             {
                 Version = uint.Parse((string)result["version"]),
                 PreviousBlockhash = (string)result["previousBlockHash"],
@@ -1396,8 +1407,6 @@ namespace NBitcoin.RPC
                 CoinbaseAux = ParseCoinbaseAux(result["coinbaseAux"]),
                 DefaultWitnessCommitment = (string)result["defaultWitnessCommitment"]
             };
-
-            return blockTemplate;
         }
 
         private BitcoinBlockTransaction[] ParseTransactions(JToken jToken)
@@ -1426,12 +1435,23 @@ namespace NBitcoin.RPC
             if (jToken == null)
                 return null;
 
-            var coinbaseAux = new CoinbaseAux()
+            return new CoinbaseAux()
             {
                 Flags = (string)jToken["flags"]
             };
+        }
 
-            return coinbaseAux;
+        private MiningInfo ParseMiningInfo(JToken result)
+        {
+            return new MiningInfo()
+            {
+                Blocks = int.Parse((string)result["blocks"]),
+                CurrentBlockSize = long.Parse((string)result["currentBlockSize"]),
+                CurrentBlockWeight = long.Parse((string)result["currentBlockWeight"]),
+                Difficulty = double.Parse((string)result["difficulty"]),
+                NetworkHashps = double.Parse((string)result["networkHashps"]),
+                Chain = (string)result["chain"]
+            };
         }
 
         #endregion
