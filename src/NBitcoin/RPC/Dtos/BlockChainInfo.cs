@@ -1,4 +1,4 @@
-﻿namespace NBitcoin.RPC
+﻿namespace NBitcoin.RPC.Dtos
 {
     public class BlockChainInfo
     {

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
-using NBitcoin.RPC;
+using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json.Linq;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
@@ -321,7 +321,7 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
         private bool GetPruneStatus()
         {
             StoreSettings blockSettings = (StoreSettings)this.FullNode.Services.ServiceProvider.GetService(typeof(StoreSettings));
-            return blockSettings.Prune;
+            return blockSettings?.Prune ?? false;
         }
     }
 }
