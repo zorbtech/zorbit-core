@@ -1374,9 +1374,9 @@ namespace NBitcoin.RPC
 
 #region Mining
 
-        public BlockTemplate GetBlockTemplate()
+        public BlockTemplate GetBlockTemplate(BlockTemplateRequest request)
         {
-            var result = SendCommand(RPCOperations.getblocktemplate).Result;
+            var result = SendCommand(RPCOperations.getblocktemplate, request).Result;
             return ParseBlockTemplate(result);
         }
 
@@ -1386,9 +1386,14 @@ namespace NBitcoin.RPC
             return ParseMiningInfo(result);
         }
 
-        public double GetNetworkHashPs()
+        public double GetNetworkHashPs(long lookup, int height)
         {
-            return double.Parse(SendCommand(RPCOperations.getnetworkhashps).Result.ToString());
+            return double.Parse(SendCommand(RPCOperations.getnetworkhashps, new[] { lookup, height }).Result.ToString());
+        }
+
+        public bool PrioritiseTransaction(string transactionId, double dummy, int fee)
+        {
+            return bool.Parse(SendCommand(RPCOperations.prioritisetransaction, new object[] { transactionId, dummy, fee }).Result.ToString());
         }
 
         private BlockTemplate ParseBlockTemplate(JToken result)

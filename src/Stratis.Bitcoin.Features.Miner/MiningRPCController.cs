@@ -8,6 +8,7 @@ using NBitcoin;
 using NBitcoin.RPC.Dtos;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Base.Deployments;
+using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
 using Stratis.Bitcoin.Features.RPC;
@@ -46,6 +47,8 @@ namespace Stratis.Bitcoin.Features.Miner
 
         private readonly INetworkDifficulty networkDifficulty;
 
+        private readonly MempoolManager mempoolManager;
+
         private readonly NodeDeployments nodeDeployments;
 
         private readonly MinerSettings minerSettings;
@@ -61,7 +64,8 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <param name="walletManager">The wallet manager.</param>
         /// <param name="posMinting">PoS staker or null if PoS staking is not enabled.</param>
         public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager,
-            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, INetworkDifficulty networkDifficulty, MiningRpcHelper miningRpcHelper, IPosMinting posMinting = null) : base(fullNode: fullNode)
+            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, INetworkDifficulty networkDifficulty,
+            MiningRpcHelper miningRpcHelper, MempoolManager mempoolManager, IPosMinting posMinting = null) : base(fullNode: fullNode)
         {
             Guard.NotNull(powMining, nameof(powMining));
             Guard.NotNull(fullNode, nameof(fullNode));
@@ -76,6 +80,7 @@ namespace Stratis.Bitcoin.Features.Miner
             this.blockAssemblerFactory = blockAssemblerFactory;
             this.networkDifficulty = networkDifficulty;
             this.miningRpcHelper = miningRpcHelper;
+            this.mempoolManager = mempoolManager;
 
             this.minerSettings = this.fullNode.NodeService<MinerSettings>();
             this.chainState = this.fullNode.NodeService<IChainState>();
@@ -209,7 +214,27 @@ namespace Stratis.Bitcoin.Features.Miner
         {
             return this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, lookup, height);
         }
+
+        /// <param name="transactionId">The transaction ID</param>
+        /// <param name="dummy">Deprecated. Must be 0 or null. Only included for backwards compatibility.</param>
+        /// <param name="fee">The fee value in Satoshis to add, or to subtract if negative</param>
+        [ActionName("prioritisetransaction")]
+        [ActionDescription("Accepts the transaction into mined blocks")]
+        public bool PrioritiseTransaction(string transactionId, double dummy, int fee)
+        {
+            // not yet implemented by stratis codebase
+            return false;
+        }
         
+        /// <param name="block">The full block in serialized block format as hex</param>
+        /// <param name="param">A JSON object containing extra parameters.</param>
+        /// <returns>Null if successful, error string if failure</returns>
+        [ActionName("submitblock")]
+        [ActionDescription("Accept, verify and broadcast a block to the network")]
+        public string SubmitBlock(string block, object param)
+        {
+            return null;
+        }
 
         private BitcoinBlockTransaction[] GetTransactions(BlockTemplate blockTemplate)
         {
