@@ -94,5 +94,7 @@ namespace Stratis.Bitcoin.Features.Consensus.Interfaces
         /// <param name="flags">Script verification flags.</param>
         /// <returns>Signature operation cost for all transaction's inputs.</returns>
         long GetTransactionSignatureOperationCost(Transaction transaction, UnspentOutputSet inputs, DeploymentFlags flags);
+
+        void UpdateUncommittedBlockStructures(Block block, ChainedBlock previousBlock);
     }
 }

@@ -1,13 +1,13 @@
-﻿using System;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using NBitcoin;
-using NBitcoin.DataEncoders;
-
-namespace Stratis.Bitcoin.Features.Miner
+﻿namespace Stratis.Bitcoin.Features.Miner
 {
+    using System;
+    using System.IO;
+    using System.Runtime.Serialization;
+    using System.Runtime.Serialization.Formatters.Binary;
+    using System.Text;
+    using NBitcoin;
+    using NBitcoin.DataEncoders;
+
     public class MiningRpcHelper
     {
         public double CalculateNetworkHashps(ChainedBlock tip, ChainBase chain, long difficultyAdjustmentInterval, long lookup, int height)
@@ -54,6 +54,11 @@ namespace Stratis.Bitcoin.Features.Miner
             var bytes = Encoding.Default.GetBytes(value);
             var hexString = Encoders.Hex.EncodeData(bytes);
             return hexString;
+        }
+
+        public byte[] GetBytesFromHex(string hex)
+        {
+            return Encoders.Hex.DecodeData(hex);
         }
 
         public ChainedBlock CloneBlock(ChainedBlock pb)

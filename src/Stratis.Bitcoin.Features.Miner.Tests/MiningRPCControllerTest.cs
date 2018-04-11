@@ -6,6 +6,8 @@ using NBitcoin;
 using Newtonsoft.Json;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
+using Stratis.Bitcoin.Features.Consensus.Interfaces;
+using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
 using Stratis.Bitcoin.Features.RPC;
@@ -31,6 +33,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         private Mock<MinerSettings> minerSettings;
         private Mock<INetworkDifficulty> networkDifficulty;
         private Mock<MiningRpcHelper> miningRpcHelper;
+        private Mock<MempoolManager> mempoolManager;
+        private Mock<IConsensusLoop> consensusLoop;
 
         public MiningRPCControllerTest(MiningRPCControllerFixture fixture)
         {
@@ -44,7 +48,7 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
                 .Returns(this.walletManager.Object);
 
             this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, 
-                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.posMinting.Object);
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.mempoolManager.Object, this.consensusLoop.Object, this.posMinting.Object);
         }
 
 
@@ -174,7 +178,7 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         public void GetStakingInfo_WithoutPosMinting_ReturnsEmptyStakingInfoModel()
         {
             this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.assemblerFactory.Object, 
-                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, null);
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.mempoolManager.Object, this.consensusLoop.Object, null);
 
             var result = this.controller.GetStakingInfo(true);
 

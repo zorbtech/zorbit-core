@@ -320,7 +320,7 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
 
         private bool GetPruneStatus()
         {
-            StoreSettings blockSettings = (StoreSettings)this.FullNode.Services.ServiceProvider.GetService(typeof(StoreSettings));
+            StoreSettings blockSettings = (StoreSettings)this.FullNode.Services?.ServiceProvider?.GetService(typeof(StoreSettings));
             return blockSettings?.Prune ?? false;
         }
     }

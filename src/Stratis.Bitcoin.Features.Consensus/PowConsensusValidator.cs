@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
@@ -586,6 +587,23 @@ namespace Stratis.Bitcoin.Features.Consensus
             }
 
             return root;
+        }
+
+        public void UpdateUncommittedBlockStructures(Block block, ChainedBlock previousBlock)
+        {
+            var commitPos = this.GetWitnessCommitmentIndex(block);
+            var nonce = RandomUtils.GetUInt64();
+            var nonceBytes = Encoding.Default.GetBytes(nonce.ToString());
+            if (commitPos != -1 && this.IsWitnessEnabled(previousBlock) && !block.Transactions[0].HasWitness)
+            {
+                var transaction = block.Transactions[0];
+                transaction.Inputs[0].WitScript = new WitScript(new[] { nonceBytes }, true);
+            }
+        }
+
+        private bool IsWitnessEnabled(ChainedBlock block)
+        {
+            return false;
         }
 
         /// <summary>

@@ -57,7 +57,7 @@ namespace NBitcoin.RPC
         mining             getmininginfo
         mining             getnetworkhashps
         mining             prioritisetransaction        TODO
-        mining             submitblock                  TODO
+        mining             submitblock
 
         ------------------ Coin generation
         generating         getgenerate
@@ -1388,12 +1388,17 @@ namespace NBitcoin.RPC
 
         public double GetNetworkHashPs(long lookup, int height)
         {
-            return double.Parse(SendCommand(RPCOperations.getnetworkhashps, new[] { lookup, height }).Result.ToString());
+            return double.Parse(SendCommand(RPCOperations.getnetworkhashps, lookup, height).Result.ToString());
         }
 
         public bool PrioritiseTransaction(string transactionId, double dummy, int fee)
         {
-            return bool.Parse(SendCommand(RPCOperations.prioritisetransaction, new object[] { transactionId, dummy, fee }).Result.ToString());
+            return bool.Parse(SendCommand(RPCOperations.prioritisetransaction, transactionId, dummy, fee).Result.ToString());
+        }
+
+        public string SubmitBlock(string blockHex, object param)
+        {
+            return SendCommand(RPCOperations.submitblock, blockHex, param).Result.ToString();
         }
 
         private BlockTemplate ParseBlockTemplate(JToken result)
