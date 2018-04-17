@@ -603,7 +603,9 @@ namespace Stratis.Bitcoin.Features.Consensus
 
         private bool IsWitnessEnabled(ChainedBlock block)
         {
-            return false;
+            var thresholdConditionCache = new ThresholdConditionCache(this.ConsensusParams);
+            var state = thresholdConditionCache.GetState(block, BIP9Deployments.Segwit);
+            return state == ThresholdState.Active;
         }
 
         /// <summary>

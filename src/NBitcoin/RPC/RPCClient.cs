@@ -1376,7 +1376,7 @@ namespace NBitcoin.RPC
 
         public BlockTemplate GetBlockTemplate(BlockTemplateRequest request)
         {
-            var result = SendCommand(RPCOperations.getblocktemplate, request).Result;
+            var result = SendCommand(RPCOperations.getblocktemplate, request.Capabilities, request.Rules).Result;
             return ParseBlockTemplate(result);
         }
 

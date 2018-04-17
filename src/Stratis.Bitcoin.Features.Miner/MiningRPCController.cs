@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using NBitcoin;
 using NBitcoin.RPC;
 using NBitcoin.RPC.Dtos;
+using Newtonsoft.Json;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Base.Deployments;
 using Stratis.Bitcoin.Features.Consensus;
@@ -238,6 +239,15 @@ namespace Stratis.Bitcoin.Features.Miner
             return false;
         }
 
+        [ActionName("getblock")]
+        [ActionDescription("get the block at the specified height")]
+        public Block GetBlock(int height)
+        {
+            var chainedBlock = this.consensusLoop.Chain.GetBlock(height);
+            var block = new Block(chainedBlock.Header);
+            return block;
+        }
+
         /// <summary>Accept, verify and broadcast a block to the network</summary>
         /// <param name="block">The full block in serialized block format as hex</param>
         /// <param name="param">DEPRECATED. A JSON object containing extra parameters.</param>
@@ -246,12 +256,11 @@ namespace Stratis.Bitcoin.Features.Miner
         [ActionDescription("Accept, verify and broadcast a block to the network")]
         public string SubmitBlock(string blockHex, object param)
         {
-            var consensusFeature = this.fullNode.Services?.Features?.Any(x => (Type)x == typeof(Consensus.ConsensusFeature));
+            var consensusFeature = this.fullNode.NodeFeature<ConsensusFeature>();
             if (consensusFeature == null)
             {
                 throw new NotImplementedException();
             }
-
 
             Block block = null;
 
@@ -270,43 +279,43 @@ namespace Stratis.Bitcoin.Features.Miner
             }
 
             var hash = block.GetHash(this.fullNode.Network.NetworkOptions);
-            var chainedBlock = this.Chain.GetBlock(hash);
+            var chainedBlock = this.consensusLoop.Chain.GetBlock(hash);
 
             bool blockPresent = false;
             if (chainedBlock != null)
             {
                 if (chainedBlock.Validate(this.fullNode.Network))
                 {
-                    return "duplicate";
+                    return GetJsonResultString("duplicate");
                 }
 
                 blockPresent = true;
-            }
 
-            var previousBlock = chainedBlock.Previous;
-            if (previousBlock != null)
-            {
-                // if include witness is enabled - not yet implemented
-                var consensusValidator = this.fullNode.NodeService<IPowConsensusValidator>();
-                consensusValidator.UpdateUncommittedBlockStructures(block, previousBlock);
+                var previousBlock = chainedBlock.Previous;
+                if (previousBlock != null)
+                {
+                    // if include witness is enabled - not yet implemented
+                    var consensusValidator = this.fullNode.NodeService<IPowConsensusValidator>();
+                    consensusValidator.UpdateUncommittedBlockStructures(block, previousBlock);
+                }
             }
 
             var blockValidationContext = new BlockValidationContext { Block = block };
             this.consensusLoop.AcceptBlockAsync(blockValidationContext).GetAwaiter().GetResult();
 
-            var tipHash = this.Chain.Tip.HashBlock;
+            var tipHash = this.consensusLoop.Chain.Tip.HashBlock;
             var isTip = tipHash.Equals(block.GetHash());
             if (blockPresent)
             {
                 if (blockValidationContext.Error == null && !isTip)
                 {
-                    return "duplicate-inconclusive";
+                    return GetJsonResultString("duplicate-inconclusive");
                 }
-                return "duplicate";
+                return GetJsonResultString("duplicate");
             }
             if (!isTip)
             {
-                return "inconclusive";
+                return GetJsonResultString("inconclusive");
             }
 
             if (blockValidationContext.Error != null)
@@ -314,7 +323,12 @@ namespace Stratis.Bitcoin.Features.Miner
                 throw new RPCServerException(RPCErrorCode.RPC_VERIFY_ERROR, blockValidationContext.Error.Message);
             }
 
-            return null;
+            return GetJsonResultString(null);
+        }
+
+        private string GetJsonResultString(object value)
+        {
+            return JsonConvert.SerializeObject(new { result = value });
         }
 
         private BitcoinBlockTransaction[] GetTransactions(BlockTemplate blockTemplate)
