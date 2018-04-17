@@ -177,25 +177,37 @@ namespace Stratis.Bitcoin.Features.Miner
 
         [ActionName("getblocktemplate")]
         [ActionDescription("Get the template for PoW mining blocks")]
-        public BlockTemplateResponse GetBlockTemplate(BlockTemplateRequest request)
+        public string GetBlockTemplate(BlockTemplateRequestMode mode, string capabilitiesJson, string rulesJson, string data)
         {
-            var template = this.blockAssemblerFactory.Create(this.chainState.ConsensusTip).CreateNewBlock(BitcoinAddress.Create(this.minerSettings.MineAddress, this.fullNode.Network).ScriptPubKey);
-            var blockTemplate = new BlockTemplateResponse
-            {
-                Version = (uint)template.Block.Header.Version,
-                PreviousBlockhash = this.chainState?.ConsensusTip?.HashBlock?.ToString(),
-                CoinbaseValue = template.Block.Transactions[0].Outputs[0].Value,
-                Target = template.Block.Header.Bits.ToUInt256().ToString(),
-                NonceRange = "00000000ffffffff",
-                CurTime = (uint)DateTimeOffset.Now.ToUnixTimeSeconds(),
-                Bits = template.Block.Header.Bits.ToString(),
-                Height = (uint)(this.chainState?.ConsensusTip?.Height + 1 ?? 1),
-                Transactions = this.GetTransactions(template),
-                CoinbaseAux = this.GetCoinbaseFlags(),
-                DefaultWitnessCommitment = this.GetWitnessCommitment(template, request.Rules)
-            };
+            // deserializing these this late shouldn't be required, temporary workaround until root cause resolved
+            var capabilities = JsonConvert.DeserializeObject<string[]>(capabilitiesJson);
+            var rules = JsonConvert.DeserializeObject<string[]>(rulesJson);
 
-            return blockTemplate;
+            if (mode.Equals(BlockTemplateRequestMode.Submit) || mode.Equals(BlockTemplateRequestMode.Proposal))
+            {
+                return this.SubmitBlock(data, null);
+            }
+            else if (mode.Equals(BlockTemplateRequestMode.Template))
+            {
+                var template = this.blockAssemblerFactory.Create(this.chainState.ConsensusTip).CreateNewBlock(BitcoinAddress.Create(this.minerSettings.MineAddress, this.fullNode.Network).ScriptPubKey);
+                var blockTemplate = new BlockTemplateResponse
+                {
+                    Version = (uint)template.Block.Header.Version,
+                    PreviousBlockhash = this.chainState?.ConsensusTip?.HashBlock?.ToString(),
+                    CoinbaseValue = template.Block.Transactions[0].Outputs[0].Value,
+                    Target = template.Block.Header.Bits.ToUInt256().ToString(),
+                    NonceRange = "00000000ffffffff",
+                    CurTime = (uint)DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    Bits = template.Block.Header.Bits.ToString(),
+                    Height = (uint)(this.chainState?.ConsensusTip?.Height + 1 ?? 1),
+                    Transactions = this.GetTransactions(template),
+                    CoinbaseAux = this.GetCoinbaseFlags(),
+                    DefaultWitnessCommitment = this.GetWitnessCommitment(template, rules)
+                };
+
+                return GetJsonResultString(blockTemplate);
+            }
+            throw new NotImplementedException();
         }
 
         [ActionName("getmininginfo")]

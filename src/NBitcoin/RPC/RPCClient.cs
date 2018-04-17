@@ -1374,9 +1374,14 @@ namespace NBitcoin.RPC
 
 #region Mining
 
-        public BlockTemplate GetBlockTemplate(BlockTemplateRequest request)
+        public object GetBlockTemplate(BlockTemplateRequest request)
         {
-            var result = SendCommand(RPCOperations.getblocktemplate, request.Capabilities, request.Rules).Result;
+            var result = SendCommand(RPCOperations.getblocktemplate, request.Mode, request.Capabilities, request.Rules, request.Data).Result;
+            if (request.Mode.Equals(BlockTemplateRequestMode.Submit) || request.Mode.Equals(BlockTemplateRequestMode.Proposal))
+            {
+                return result.ToString();
+            }
+
             return ParseBlockTemplate(result);
         }
 
