@@ -178,12 +178,12 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
         {
             var chainInfo = new BlockChainInfo()
             {
-                Chain = this.Chain.Network.ToString(),
+                Chain = this.Chain?.Network.ToString(),
                 Blocks = this.ChainState?.ConsensusTip?.Height ?? 0,
                 Headers = this.consensusLoop?.Chain?.Height ?? -1,
                 BestBlockHash = this.ChainState?.ConsensusTip?.HashBlock?.ToString(),
                 Difficulty = this.GetNetworkDifficulty()?.Difficulty ?? 0,
-                MedianTime = this.Chain.Tip.GetMedianTimePast().ToUnixTimeSeconds(),
+                MedianTime = this.Chain?.Tip.GetMedianTimePast().ToUnixTimeSeconds() ?? 0,
                 VerificationProgress = this.GetVerificationProgress(),
                 Pruned = this.GetPruneStatus()
             };
@@ -287,40 +287,40 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
 
         private double GetVerificationProgress()
         {
-            if (this.Chain?.Tip?.Header == null)
+            if (this.Chain?.Tip.Header == null)
                 return 0.0;
 
             // requires total transaction count,
             // timestamp of last known number of transactions,
             // estimated number of transactions per second since timestamp
-            // Genesis.Header.Time = ChainTxData.nTime = timestamp of last known number of transactions?
-            // Genesis.Header.Nonce = ChainTxData.nTxCount = requires total transaction count?
-            // Genesis.Header.Bits = ChainTxData.dTxRate = estimated number of transactions per second since timestamp?
+            // ChainTxData.nTime = timestamp of last known number of transactions? -- UNIX timestamp of last known number of transactions
+            // ChainTxData.nTxCount = total transaction count? -- // total number of transactions between genesis and that timestamp (the tx=... number in the SetBestChain debug.log lines)
+            // ChainTxData.dTxRate = estimated number of transactions per second since timestamp? -- estimated number of transactions per second after that timestamp
 
-
-            var data = this.Network.GetGenesis().Header;
+            var chainData = this.Network.GetGenesis();
 
             var now = DateTime.Now.ToUnixTimestamp();
 
             double txTotal;
+            double chainTxRate = 1;
 
-            var tipData = this.Chain.Tip.Header;
+            var tipBlock = new Block(this.Chain?.Tip.Header);
 
-            if (tipData.Nonce < data.Nonce)
+            if (tipBlock.Transactions.Count < chainData.Transactions.Count)
             {
-                txTotal = data.Nonce + (now - data.Time) * data.Bits;
+                txTotal = chainData.Transactions.Count + (now - chainData.Header.BlockTime.ToUnixTimeSeconds()) * chainTxRate;
             }
             else
             {
-                txTotal = tipData.Nonce + (now - tipData.Time) * data.Bits;
+                txTotal = tipBlock.Transactions.Count + (now - tipBlock.Header.BlockTime.ToUnixTimeSeconds()) * chainTxRate;
             }
 
-            return tipData.Nonce / txTotal;
+            return tipBlock.Transactions.Count / txTotal;
         }
 
         private bool GetPruneStatus()
         {
-            StoreSettings blockSettings = (StoreSettings)this.FullNode.Services?.ServiceProvider?.GetService(typeof(StoreSettings));
+            var blockSettings = this.FullNode.NodeService<StoreSettings>();
             return blockSettings?.Prune ?? false;
         }
     }
