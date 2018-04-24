@@ -24,7 +24,7 @@ namespace NBitcoin.RPC
         control            stop
 
         ------------------ P2P networking
-        network            getnetworkinfo
+        network            getnetworkinfo               Yes
         network            addnode                      Yes
         network            disconnectnode
         network            getaddednodeinfo             Yes
@@ -37,13 +37,13 @@ namespace NBitcoin.RPC
         network            clearbanned
 
         ------------------ Block chain and UTXO
-        blockchain         getblockchaininfo
+        blockchain         getblockchaininfo            Yes
         blockchain         getbestblockhash             Yes
         blockchain         getblockcount                Yes
         blockchain         getblock                     Yes
         blockchain         getblockhash                 Yes
         blockchain         getchaintips
-        blockchain         getdifficulty
+        blockchain         getdifficulty                Yes
         blockchain         getmempoolinfo
         blockchain         getrawmempool                Yes
         blockchain         gettxout                    Yes
@@ -53,11 +53,11 @@ namespace NBitcoin.RPC
         blockchain         verifychain
 
         ------------------ Mining
-        mining             getblocktemplate
-        mining             getmininginfo
-        mining             getnetworkhashps
+        mining             getblocktemplate             Yes
+        mining             getmininginfo                Yes
+        mining             getnetworkhashps             Yes
         mining             prioritisetransaction        TODO
-        mining             submitblock
+        mining             submitblock                  Yes
 
         ------------------ Coin generation
         generating         getgenerate
@@ -831,6 +831,27 @@ namespace NBitcoin.RPC
             }
 
             return result;
+        }
+
+        public NetworkInfo GetNetworkInfo()
+        {
+            var result = SendCommand(RPCOperations.getnetworkinfo).Result;
+            return ParseNetworkInfo(result);
+        }
+
+        private NetworkInfo ParseNetworkInfo(JToken result)
+        {
+            var networkInfo = new NetworkInfo()
+            {
+                Version = (string)result["version"],
+                SubVersion = (string)result["subVersion"],
+                ProtocolVersion = int.Parse((string)result["protocolVersion"]),
+                Connections = int.Parse((string)result["connections"]),
+                LocalRelay = bool.Parse((string)result["localRelay"]),
+                NetworkActive = bool.Parse((string)result["networkActive"])
+            };
+
+            return networkInfo;
         }
 
         public void AddNode(EndPoint nodeEndPoint, bool onetry = false)

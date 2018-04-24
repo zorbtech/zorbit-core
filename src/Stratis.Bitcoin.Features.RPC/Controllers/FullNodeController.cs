@@ -172,6 +172,23 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             return model;
         }
 
+        [ActionName("getnetworkinfo")]
+        [ActionDescription("Gets network information about the node's connection to the network")]
+        public NetworkInfo GetNetworkInfo()
+        {
+            var result = new NetworkInfo()
+            {
+                Version = this.FullNode?.Version?.ToString() ?? "0",
+                SubVersion = this.ConnectionManager?.Parameters?.UserAgent ?? "0",
+                ProtocolVersion = (int)(this.Settings?.ProtocolVersion ?? NodeSettings.SupportedProtocolVersion),
+                NetworkActive = true,
+                LocalRelay = this.ConnectionManager?.Parameters?.IsRelay ?? false,
+                Connections = this.ConnectionManager?.ConnectedPeers?.Count() ?? 0,
+            };
+
+            return result;
+        }
+
         [ActionName("getblockchaininfo")]
         [ActionDescription("Get ")]
         public BlockChainInfo GetBlockChainInfo()
