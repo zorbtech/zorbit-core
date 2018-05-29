@@ -261,4 +261,56 @@ namespace NBitcoin
             stream.ReadWrite(ref this.blockSignature);
         }
     }
+
+    public sealed class PowPosConsensusFactory : PosConsensusFactory
+    {
+        public override BlockHeader CreateBlockHeader()
+        {
+            return new PowPosBlockHeader();
+        }
+    }
+
+    /// <summary>
+    /// A POS block header, this will create a work hash based on the X13 hash algos.
+    /// </summary>
+    public class PowPosBlockHeader : PosBlockHeader
+    {
+        /// <summary>Current header version.</summary>
+        public override int CurrentVersion => 7;
+
+        /// <inheritdoc />
+        public override uint256 GetHash()
+        {
+            uint256 hash = null;
+            uint256[] innerHashes = this.hashes;
+
+            if (innerHashes != null)
+                hash = innerHashes[0];
+
+            if (hash != null)
+                return hash;
+
+            if (this.version > 6)
+                hash = Hashes.Hash256(this.ToBytes());
+            else
+                hash = this.GetPoWHash();
+
+            innerHashes = this.hashes;
+            if (innerHashes != null)
+            {
+                innerHashes[0] = hash;
+            }
+
+            return hash;
+        }
+
+        /// <summary>
+        /// Generate a has based on the Lyra2rev2 algorithms.
+        /// </summary>
+        /// <returns></returns>
+        public override uint256 GetPoWHash()
+        {
+            return Lyra2rev2.Instance.Hash(this.ToBytes());
+        }
+    }
 }

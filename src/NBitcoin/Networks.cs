@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using NBitcoin.BouncyCastle.Math;
 using NBitcoin.DataEncoders;
 using NBitcoin.Protocol;
@@ -36,12 +33,6 @@ namespace NBitcoin
         /// <summary> The default name used for the Stratis configuration file. </summary>
         public const string StratisDefaultConfigFilename = "stratis.conf";
 
-        /// <summary> The name of the root folder containing the different Zorbit blockchains (ZorbitMain, ZorbitTest, ZorbitRegTest). </summary>
-        public const string ZorbitRootFolderName = "zorbit";
-
-        /// <summary> The default name used for the Stratis configuration file. </summary>
-        public const string ZorbitDefaultConfigFilename = "zorbit.conf";
-
         public static Network Main => Network.GetNetwork("Main") ?? InitMain();
 
         public static Network TestNet => Network.GetNetwork("TestNet") ?? InitTest();
@@ -54,15 +45,9 @@ namespace NBitcoin
 
         public static Network StratisRegTest => Network.GetNetwork("StratisRegTest") ?? InitStratisRegTest();
 
-        public static Network ZorbitMain => Network.GetNetwork("ZorbitMain") ?? InitZorbitMain();
-
-        public static Network ZorbitTest => Network.GetNetwork("ZorbitTest") ?? InitZorbitTest();
-
-        public static Network ZorbitRegTest => Network.GetNetwork("ZorbitRegTest") ?? InitZorbitRegTest();
-
         private static Network InitMain()
         {
-            Network network = new Network
+            var network = new Network
             {
                 Name = "Main",
                 RootFolderName = BitcoinRootFolderName,
@@ -71,20 +56,25 @@ namespace NBitcoin
                 // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
                 // a large 4-byte int at any alignment.
                 Magic = 0xD9B4BEF9,
-                alertPubKeyArray = Encoders.Hex.DecodeData("04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284"),
+                alertPubKeyArray =
+                    Encoders.Hex.DecodeData(
+                        "04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284"),
                 DefaultPort = 8333,
                 RPCPort = 8332,
                 MaxTimeOffsetSeconds = BitcoinMaxTimeOffsetSeconds,
                 MaxTipAge = BitcoinDefaultMaxTipAgeInSeconds,
                 MinTxFee = 1000,
                 FallbackFee = 20000,
-                MinRelayTxFee = 1000
+                MinRelayTxFee = 1000,
+                Consensus =
+                {
+                    SubsidyHalvingInterval = 210000,
+                    MajorityEnforceBlockUpgrade = 750,
+                    MajorityRejectBlockOutdated = 950,
+                    MajorityWindow = 1000
+                }
             };
 
-            network.Consensus.SubsidyHalvingInterval = 210000;
-            network.Consensus.MajorityEnforceBlockUpgrade = 750;
-            network.Consensus.MajorityRejectBlockOutdated = 950;
-            network.Consensus.MajorityWindow = 1000;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 227931;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 388381;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 363725;
@@ -322,7 +312,7 @@ namespace NBitcoin
 
         private static Network InitStratisMain()
         {
-            BlockHeader.PowProvider = Crypto.HashX13.Instance;
+            // BlockHeader.PowProvider = Crypto.HashX13.Instance;
             // The message start string is designed to be unlikely to occur in normal data.
             // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
             // a large 4-byte int at any alignment.
@@ -333,7 +323,7 @@ namespace NBitcoin
             messageStart[3] = 0x05;
             var magic = BitConverter.ToUInt32(messageStart, 0); //0x5223570; 
 
-            Network network = new Network
+            var network = new Network
             {
                 Name = "StratisMain",
                 RootFolderName = StratisRootFolderName,
@@ -345,13 +335,16 @@ namespace NBitcoin
                 FallbackFee = 60000,
                 MinRelayTxFee = 10000,
                 MaxTimeOffsetSeconds = StratisMaxTimeOffsetSeconds,
-                MaxTipAge = StratisDefaultMaxTipAgeInSeconds
+                MaxTipAge = StratisDefaultMaxTipAgeInSeconds,
+                Consensus =
+                {
+                    SubsidyHalvingInterval = 210000,
+                    MajorityEnforceBlockUpgrade = 750,
+                    MajorityRejectBlockOutdated = 950,
+                    MajorityWindow = 1000
+                }
             };
 
-            network.Consensus.SubsidyHalvingInterval = 210000;
-            network.Consensus.MajorityEnforceBlockUpgrade = 750;
-            network.Consensus.MajorityRejectBlockOutdated = 950;
-            network.Consensus.MajorityWindow = 1000;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
@@ -431,7 +424,7 @@ namespace NBitcoin
                 // It'll only connect to one or two seed nodes because once it connects,
                 // it'll get a pile of addresses with newer timestamps.
                 // Seed nodes are given a random 'last seen time' of between one and two weeks ago.
-                NetworkAddress addr = new NetworkAddress
+                var addr = new NetworkAddress
                 {
                     Time = DateTime.UtcNow - (TimeSpan.FromSeconds(rand.NextDouble() * oneWeek.TotalSeconds)) - oneWeek,
                     Endpoint = Utils.ParseIpEndpoint(seed, network.DefaultPort)
@@ -446,7 +439,8 @@ namespace NBitcoin
 
         private static Network InitStratisTest()
         {
-            BlockHeader.PowProvider = Crypto.HashX13.Instance;
+            // BlockHeader.PowProvider = Crypto.HashX13.Instance;
+
             // The message start string is designed to be unlikely to occur in normal data.
             // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
             // a large 4-byte int at any alignment.
@@ -457,7 +451,7 @@ namespace NBitcoin
             messageStart[3] = 0x11;
             var magic = BitConverter.ToUInt32(messageStart, 0); // 0x11213171;
 
-            Network network = new Network
+            var network = new Network
             {
                 Name = "StratisTest",
                 RootFolderName = StratisRootFolderName,
@@ -469,13 +463,16 @@ namespace NBitcoin
                 MaxTipAge = StratisDefaultMaxTipAgeInSeconds,
                 MinTxFee = 10000,
                 FallbackFee = 60000,
-                MinRelayTxFee = 10000
+                MinRelayTxFee = 10000,
+                Consensus =
+                {
+                    SubsidyHalvingInterval = 210000,
+                    MajorityEnforceBlockUpgrade = 750,
+                    MajorityRejectBlockOutdated = 950,
+                    MajorityWindow = 1000
+                }
             };
 
-            network.Consensus.SubsidyHalvingInterval = 210000;
-            network.Consensus.MajorityEnforceBlockUpgrade = 750;
-            network.Consensus.MajorityRejectBlockOutdated = 950;
-            network.Consensus.MajorityWindow = 1000;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
@@ -552,7 +549,8 @@ namespace NBitcoin
 
         private static Network InitStratisRegTest()
         {
-            BlockHeader.PowProvider = Crypto.HashX13.Instance;
+           // BlockHeader.PowProvider = Crypto.HashX13.Instance;
+
             var messageStart = new byte[4];
             messageStart[0] = 0xcd;
             messageStart[1] = 0xf2;
@@ -560,7 +558,7 @@ namespace NBitcoin
             messageStart[3] = 0xef;
             var magic = BitConverter.ToUInt32(messageStart, 0); // 0xefc0f2cd
 
-            Network network = new Network
+            var network = new Network
             {
                 Name = "StratisRegTest",
                 RootFolderName = StratisRootFolderName,
@@ -569,13 +567,16 @@ namespace NBitcoin
                 DefaultPort = 18444,
                 RPCPort = 18442,
                 MaxTimeOffsetSeconds = StratisMaxTimeOffsetSeconds,
-                MaxTipAge = StratisDefaultMaxTipAgeInSeconds
+                MaxTipAge = StratisDefaultMaxTipAgeInSeconds,
+                Consensus =
+                {
+                    SubsidyHalvingInterval = 210000,
+                    MajorityEnforceBlockUpgrade = 750,
+                    MajorityRejectBlockOutdated = 950,
+                    MajorityWindow = 1000
+                }
             };
 
-            network.Consensus.SubsidyHalvingInterval = 210000;
-            network.Consensus.MajorityEnforceBlockUpgrade = 750;
-            network.Consensus.MajorityRejectBlockOutdated = 950;
-            network.Consensus.MajorityWindow = 1000;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
             network.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
@@ -620,247 +621,13 @@ namespace NBitcoin
             network.Bech32Encoders[(int)Bech32Type.WITNESS_PUBKEY_ADDRESS] = encoder;
             network.Bech32Encoders[(int)Bech32Type.WITNESS_SCRIPT_ADDRESS] = encoder;
 
-            Network.Register(network);
+            Register(network);
 
             return network;
         }
 
+
         private static Block CreateGenesisBlock(ConsensusFactory consensusFactory, uint nTime, uint nNonce, uint nBits, int nVersion, Money genesisReward)
-        private static Network InitZorbitMain()
-        {
-            Block.BlockSignature = true;
-            BlockHeader.CurrentVersion = 4;
-            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
-            Transaction.TimeStamp = true;
-
-            var consensus = new Consensus();
-
-            consensus.NetworkOptions = new NetworkOptions()
-            {
-                IsProofOfStake = true
-            };
-            consensus.SubsidyHalvingInterval = 262800;
-            consensus.MajorityEnforceBlockUpgrade = 750;
-            consensus.MajorityRejectBlockOutdated = 950;
-            consensus.MajorityWindow = 1000;
-            consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
-            consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
-            consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
-            consensus.BIP34Hash = new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716");
-            consensus.PowLimit = new Target(new uint256("000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-            consensus.PowTargetTimespan = TimeSpan.FromSeconds(10 * 60); // 10 minutes
-            consensus.PowTargetSpacing = TimeSpan.FromSeconds(2 * 60); // 2 minutes
-            consensus.PowAllowMinDifficultyBlocks = false;
-            consensus.PowNoRetargeting = false;
-            consensus.RuleChangeActivationThreshold = 684; // 95% of 720
-            consensus.MinerConfirmationWindow = 720; // nPowTargetTimespan / nPowTargetSpacing
-
-            consensus.BIP9Deployments[BIP9Deployments.TestDummy] = new BIP9DeploymentsParameters(28, 0, 0);
-            consensus.BIP9Deployments[BIP9Deployments.CSV] = new BIP9DeploymentsParameters(0, BIP9DeploymentsParameters.AlwaysActive, 999999999);
-            consensus.BIP9Deployments[BIP9Deployments.Segwit] = new BIP9DeploymentsParameters(1, BIP9DeploymentsParameters.AlwaysActive, 999999999);
-
-            consensus.LastPOWBlock = 1324000;
-
-            consensus.ProofOfStakeLimit = new BigInteger(uint256.Parse("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
-            consensus.ProofOfStakeLimitV2 = new BigInteger(uint256.Parse("000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffff").ToBytes(false));
-
-            consensus.CoinType = 177;
-
-            consensus.DefaultAssumeValid = new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716");
-
-            Block genesis = CreateZorbitGenesisBlock(1515944103, 33395447, consensus.PowLimit, 1, Money.Zero);
-
-            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
-
-            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
-
-            Assert(consensus.HashGenesisBlock == uint256.Parse("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716"));
-            Assert(genesis.Header.HashMerkleRoot == uint256.Parse("0xe0c01fb7ea26f7de5cc362056b01fd8de036c1a166d355e6f07bbf2dfab1c4ee"));
-
-            var messageStart = new byte[4];
-            messageStart[0] = 0x11;
-            messageStart[1] = 0x10;
-            messageStart[2] = 0x19;
-            messageStart[3] = 0x07;
-            var magic = BitConverter.ToUInt32(messageStart, 0);
-
-            var builder = new NetworkBuilder()
-                .SetName("ZorbitMain")
-                .SetRootFolderName(ZorbitRootFolderName)
-                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
-                .SetConsensus(consensus)
-                .SetMagic(magic)
-                .SetGenesis(genesis)
-                .SetPort(17777)
-                .SetRPCPort(17778)
-                .SetTxFees(10000, 60000, 10000)
-
-                //.AddDNSSeeds(new[]
-                //{
-                //})
-
-                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (142) })
-                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (80) })
-                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
-                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
-                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
-                .SetBase58Bytes(Base58Type.PASSPHRASE_CODE, new byte[] { 0x2C, 0xE9, 0xB3, 0xE1, 0xFF, 0x39, 0xE2 })
-                .SetBase58Bytes(Base58Type.CONFIRMATION_CODE, new byte[] { 0x64, 0x3B, 0xF6, 0xA8, 0x9A })
-                .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2d })
-                .SetBase58Bytes(Base58Type.ASSET_ID, new byte[] { 23 })
-                .SetBase58Bytes(Base58Type.COLORED_ADDRESS, new byte[] { 0x13 })
-                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrb")
-                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrb");
-
-            //var seed = new[] { "" };
-            //var fixedSeeds = new List<NetworkAddress>();
-            //// Convert the pnSeeds array into usable address objects.
-            //Random rand = new Random();
-            //TimeSpan oneWeek = TimeSpan.FromDays(7);
-            //for (int i = 0; i < seed.Length; i++)
-            //{
-            //    // It'll only connect to one or two seed nodes because once it connects,
-            //    // it'll get a pile of addresses with newer timestamps.                
-            //    NetworkAddress addr = new NetworkAddress();
-            //    // Seed nodes are given a random 'last seen time' of between one and two
-            //    // weeks ago.
-            //    addr.Time = DateTime.UtcNow - (TimeSpan.FromSeconds(rand.NextDouble() * oneWeek.TotalSeconds)) - oneWeek;
-            //    addr.Endpoint = Utils.ParseIpEndpoint(seed[i], builder.Port);
-            //    fixedSeeds.Add(addr);
-            //}
-
-            //builder.AddSeeds(fixedSeeds);
-            return builder.BuildAndRegister();
-        }
-
-        private static Network InitZorbitTest()
-        {
-            Block.BlockSignature = true;
-            BlockHeader.CurrentVersion = 4;
-            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
-            Transaction.TimeStamp = true;
-
-            var consensus = Network.ZorbitMain.Consensus.Clone();
-            consensus.PowLimit = new Target(uint256.Parse("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-            consensus.DefaultAssumeValid = new uint256("0x00000a1d7540dd6d82f381c9098587cbf553ac21d41cd34db17787a01f557158");
-            consensus.PowTargetTimespan = TimeSpan.FromSeconds(4 * 60); // 4 minutes
-
-            // The message start string is designed to be unlikely to occur in normal data.
-            // The characters are rarely used upper ASCII, not valid as UTF-8, and produce
-            // a large 4-byte int at any alignment.
-            var messageStart = new byte[4];
-            messageStart[0] = 0x16;
-            messageStart[1] = 0x24;
-            messageStart[2] = 0x43;
-            messageStart[3] = 0x04;
-            var magic = BitConverter.ToUInt32(messageStart, 0); //0x5223570; 
-
-            var genesis = Network.ZorbitMain.GetGenesis();
-            genesis.Header.Time = 1515944095;
-            genesis.Header.Nonce = 860806;
-            genesis.Header.Bits = consensus.PowLimit;
-
-            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
-
-            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
-
-            Assert(consensus.HashGenesisBlock == uint256.Parse("0x00000a1d7540dd6d82f381c9098587cbf553ac21d41cd34db17787a01f557158"));
-
-            var builder = new NetworkBuilder()
-                .SetName("ZorbitTest")
-                .SetRootFolderName(ZorbitRootFolderName)
-                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
-                .SetConsensus(consensus)
-                .SetMagic(magic)
-                .SetGenesis(genesis)
-                .SetPort(27777)
-                .SetRPCPort(27778)
-                .SetTxFees(10000, 60000, 10000)
-                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (127) })
-                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (65) })
-                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
-                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
-                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
-                .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2e })
-                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrt")
-                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrt");
-
-            //.AddDNSSeeds(new[]
-            //{
-            //});
-
-            //builder.AddSeeds(new[] { new NetworkAddress(IPAddress.Parse(""), builder.Port) }); // the c# testnet node
-
-
-            return builder.BuildAndRegister();
-        }
-
-        private static Network InitZorbitRegTest()
-        {
-            // TODO: move this to Networks
-            var net = Network.GetNetwork("ZorbitRegTest");
-            if (net != null)
-                return net;
-
-            Block.BlockSignature = true;
-            BlockHeader.CurrentVersion = 4;
-            BlockHeader.PowProvider = Crypto.Lyra2rev2.Instance;
-            Transaction.TimeStamp = true;
-
-            var consensus = Network.ZorbitTest.Consensus.Clone();
-            consensus.PowLimit = new Target(uint256.Parse("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-
-            consensus.PowAllowMinDifficultyBlocks = true;
-            consensus.PowNoRetargeting = true;
-
-
-            var messageStart = new byte[4];
-            messageStart[0] = 0xdd;
-            messageStart[1] = 0xd6;
-            messageStart[2] = 0xea;
-            messageStart[3] = 0xf7;
-            var magic = BitConverter.ToUInt32(messageStart, 0);
-
-            var genesis = Network.ZorbitTest.GetGenesis();
-            genesis.Header.Time = 1515944354;
-            genesis.Header.Nonce = 8;
-            genesis.Header.Bits = consensus.PowLimit;
-
-            // genesis.Header.Nonce = CalculateProofOfWork(genesis.Header, consensus);
-
-            consensus.HashGenesisBlock = genesis.GetHash(consensus.NetworkOptions);
-
-            Assert(consensus.HashGenesisBlock == uint256.Parse("0x301b0f400afd80b21830101ca2bf847a6a56e8b6ff99e2320798c452c34f6c3b"));
-
-            consensus.DefaultAssumeValid = null; // turn off assumevalid for regtest.
-
-            var builder = new NetworkBuilder()
-                .SetName("ZorbitRegTest")
-                .SetRootFolderName(ZorbitRootFolderName)
-                .SetDefaultConfigFilename(ZorbitDefaultConfigFilename)
-                .SetConsensus(consensus)
-                .SetMagic(magic)
-                .SetGenesis(genesis)
-                .SetPort(17777)
-                .SetRPCPort(17778)
-                .SetBase58Bytes(Base58Type.PUBKEY_ADDRESS, new byte[] { (127) })
-                .SetBase58Bytes(Base58Type.SCRIPT_ADDRESS, new byte[] { (65) })
-                .SetBase58Bytes(Base58Type.SECRET_KEY, new byte[] { (63 + 128) })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_NO_EC, new byte[] { 0x01, 0x42 })
-                .SetBase58Bytes(Base58Type.ENCRYPTED_SECRET_KEY_EC, new byte[] { 0x01, 0x43 })
-                .SetBase58Bytes(Base58Type.EXT_PUBLIC_KEY, new byte[] { (0x04), (0x88), (0xB2), (0x1E) })
-                .SetBase58Bytes(Base58Type.EXT_SECRET_KEY, new byte[] { (0x04), (0x88), (0xAD), (0xE4) })
-                .SetBase58Bytes(Base58Type.STEALTH_ADDRESS, new byte[] { 0x2f })
-                .SetBech32(Bech32Type.WITNESS_PUBKEY_ADDRESS, "zrr")
-                .SetBech32(Bech32Type.WITNESS_SCRIPT_ADDRESS, "zrr");
-
-            return builder.BuildAndRegister();
-        }
-
         {
             string pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
             Script genesisOutputScript = new Script(Op.GetPushOp(Encoders.Hex.DecodeData("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f")), OpcodeType.OP_CHECKSIG);
@@ -927,50 +694,6 @@ namespace NBitcoin
             genesis.Header.HashPrevBlock = uint256.Zero;
             genesis.UpdateMerkleRoot();
             return genesis;
-        }
-
-        private static Block CreateZorbitGenesisBlock(uint nTime, uint nNonce, uint nBits, int nVersion, Money genesisReward)
-        {
-            string pszTimestamp = "Hawaii in shock after false missile alert";
-            return CreateStratisGenesisBlock(pszTimestamp, nTime, nNonce, nBits, nVersion, genesisReward);
-        }
-
-        public static uint CalculateProofOfWork(BlockHeader header, Consensus consensus)
-        {
-            uint nonce = 0;
-            int count = 0;
-            Stopwatch sw = new Stopwatch();
-
-            var options = new ParallelOptions
-            {
-                MaxDegreeOfParallelism = 4
-            };
-
-            sw.Start();
-
-            Parallel.ForEach(Enumerable.Range(0, int.MaxValue), options, (i, state) =>
-            {
-                BlockHeader tmp = header.Clone();
-                tmp.Nonce = (uint)i;
-                count++;
-                if (state.IsStopped || state.ShouldExitCurrentIteration || !tmp.CheckProofOfWork(consensus))
-                {
-                    if (sw.ElapsedMilliseconds < 1000)
-                    {
-                        return;
-                    }
-
-                    Console.WriteLine("{0} H/s", count);
-                    count = 0;
-                    sw.Restart();
-                    return;
-                }
-                sw.Stop();
-                nonce = tmp.Nonce;
-                state.Break();
-            });
-
-            return nonce;
         }
     }
 }

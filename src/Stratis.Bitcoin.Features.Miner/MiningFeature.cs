@@ -287,7 +287,9 @@ namespace Stratis.Bitcoin.Features.Miner
                     {
                         services.AddSingleton<IPowMining, PowMining>();
                         services.AddSingleton<IPosMinting, PosMinting>();
-                        services.AddSingleton<IAssemblerFactory, PowPosAssemblerFactory>();
+                        services.AddSingleton<IBlockProvider, BlockProvider>();
+                        services.AddSingleton<BlockDefinition, PowBlockDefinition>();
+                        services.AddSingleton<BlockDefinition, PowPosBlockDefinition>();
                         services.AddSingleton<MinerController>();
                         services.AddSingleton<MiningRPCController>();
                         services.AddSingleton<MinerSettings>(new MinerSettings(setup));

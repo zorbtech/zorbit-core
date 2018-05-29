@@ -146,7 +146,7 @@ namespace Stratis.Bitcoin.Features.Miner
         }
 
         // protected virtual int ComputeBlockVersion(ChainedBlock prevChainedBlock, NBitcoin.Consensus consensus)
-        protected virtual ComputeBlockVersion(ChainedHeader prevChainedHeader, NBitcoin.Consensus consensus)
+        protected virtual int ComputeBlockVersion(ChainedHeader prevChainedHeader, NBitcoin.Consensus consensus)
         {
             uint version = ThresholdConditionCache.VersionbitsTopBits;
             var thresholdConditionCache = new ThresholdConditionCache(consensus);

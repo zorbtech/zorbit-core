@@ -46,10 +46,10 @@ namespace Stratis.Bitcoin.Features.Consensus
     public class Checkpoints : ICheckpoints
     {
         /// <summary>The current network. </summary>
-        private Network network;
+        private readonly Network network;
 
         /// <summary>Consensus settings for the full node.</summary>
-        private ConsensusSettings consensusSettings { get; }
+        private readonly ConsensusSettings consensusSettings;
 
         /// <summary>
         /// Initializes a new instance of the object.
@@ -70,8 +70,6 @@ namespace Stratis.Bitcoin.Features.Consensus
 
             this.consensusSettings = consensusSettings;
             this.network = network;
-            else if (network.Equals(Network.ZorbitMain)) this.checkpoints = zorbitMainnetCheckpoints;
-            else if (network.Equals(Network.ZorbitTest)) this.checkpoints = zorbitTestnetCheckpoints;
         }
 
         /// <inheritdoc />
@@ -84,8 +82,7 @@ namespace Stratis.Bitcoin.Features.Consensus
         /// <inheritdoc />
         public bool CheckHardened(int height, uint256 hash)
         {
-            CheckpointInfo checkpoint;
-            if (!this.GetCheckpoints().TryGetValue(height, out checkpoint)) return true;
+            if (!this.GetCheckpoints().TryGetValue(height, out CheckpointInfo checkpoint)) return true;
 
             return checkpoint.Hash.Equals(hash);
         }
@@ -93,8 +90,7 @@ namespace Stratis.Bitcoin.Features.Consensus
         /// <inheritdoc />
         public CheckpointInfo GetCheckpoint(int height)
         {
-            CheckpointInfo checkpoint;
-            this.GetCheckpoints().TryGetValue(height, out checkpoint);
+            this.GetCheckpoints().TryGetValue(height, out CheckpointInfo checkpoint);
             return checkpoint;
         }
 

@@ -136,9 +136,6 @@ namespace NBitcoin
         {
             this.BuriedDeployments = new BuriedDeploymentsArray(this);
             this.BIP9Deployments = new BIP9DeploymentsArray(this);
-            
-            if (BlockHeader.PowProvider != null)
-                this.GetPoWHash = (n, h) => BlockHeader.PowProvider.Hash(h.ToBytes(options: n));
 
             this.ConsensusFactory = new ConsensusFactory()
             {
