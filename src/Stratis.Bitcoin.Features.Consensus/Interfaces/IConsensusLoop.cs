@@ -3,6 +3,7 @@ using NBitcoin;
 using Stratis.Bitcoin.Base.Deployments;
 using Stratis.Bitcoin.BlockPulling;
 using Stratis.Bitcoin.Features.Consensus.CoinViews;
+using Stratis.Bitcoin.Features.Consensus.Rules;
 
 namespace Stratis.Bitcoin.Features.Consensus.Interfaces
 {
@@ -25,13 +26,13 @@ namespace Stratis.Bitcoin.Features.Consensus.Interfaces
         IStakeChain StakeChain { get; }
 
         /// <summary>The current tip of the chain that has been validated.</summary>
-        ChainedBlock Tip { get; }
+        ChainedHeader Tip { get; }
 
         /// <summary>The consensus db, containing all unspent UTXO in the chain.</summary>
         CoinView UTXOSet { get; }
 
-        /// <summary>The validation logic for the consensus rules.</summary>
-        IPowConsensusValidator Validator { get; }
+        /// <summary>The rules engine for validation logic for the consensus rules.</summary>
+        IConsensusRules ConsensusRules { get; }
 
         /// <summary>
         /// A method that will accept a new block to the node.
@@ -48,26 +49,18 @@ namespace Stratis.Bitcoin.Features.Consensus.Interfaces
         Task FlushAsync(bool force);
 
         /// <summary>
-        /// Get transaction identifiers to try to pre-fetch them from cache.
-        /// </summary>
-        /// <param name="block">The block containing transactions to fetch.</param>
-        /// <param name="enforceBIP30"><c>true</c> to enforce BIP30.</param>
-        /// <returns>List of transaction ids.</returns>
-        uint256[] GetIdsToFetch(Block block, bool enforceBIP30);
-
-        /// <summary>
-        /// Initialize components in <see cref="Consensus.ConsensusLoop"/>.
+        /// Initialize components in <see cref="ConsensusLoop"/>.
         /// </summary>
         Task StartAsync();
 
         /// <summary>
-        /// Dispose components in <see cref="Consensus.ConsensusLoop"/>.
+        /// Dispose components in <see cref="ConsensusLoop"/>.
         /// </summary>
         void Stop();
 
         /// <summary>
         /// Validates a block using the consensus rules.
         /// </summary>
-        void ValidateBlock(RuleContext context, bool skipRules = false);
+        void ValidateBlock(RuleContext context);
     }
 }

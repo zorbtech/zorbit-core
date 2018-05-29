@@ -4,15 +4,16 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Security;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
 using Stratis.Bitcoin.Connection;
+using Stratis.Bitcoin.Features.Wallet.Broadcasting;
 using Stratis.Bitcoin.Features.Wallet.Helpers;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
 using Stratis.Bitcoin.Features.Wallet.Models;
-using Stratis.Bitcoin.Interfaces;
 using Stratis.Bitcoin.Utilities;
 using Stratis.Bitcoin.Utilities.JsonErrors;
 
@@ -514,6 +515,41 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
         }
 
         /// <summary>
+        /// Gets the balance for an address.
+        /// </summary>
+        /// <param name="request">The request parameters.</param>
+        /// <returns>The address balance for an address.</returns>
+        [Route("received-by-address")]
+        [HttpGet]
+        public IActionResult GetReceivedByAddress([FromQuery] ReceivedByAddressRequest request)
+        {
+            Guard.NotNull(request, nameof(request));
+
+            // Checks the request is valid
+            if (!this.ModelState.IsValid)
+            {
+                return BuildErrorResponse(this.ModelState);
+            }
+
+            try
+            {
+                AddressBalance balanceResult = this.walletManager.GetAddressBalance(request.Address);
+                return this.Json(new AddressBalanceModel
+                {
+                    CoinType = this.coinType,
+                    Address = balanceResult.Address,
+                    AmountConfirmed = balanceResult.AmountConfirmed,
+                    AmountUnconfirmed = balanceResult.AmountUnconfirmed
+                });
+            }
+            catch (Exception e)
+            {
+                this.logger.LogError("Exception occurred: {0}", e.ToString());
+                return ErrorHelpers.BuildErrorResponse(HttpStatusCode.BadRequest, e.Message, e.ToString());
+            }
+        }
+
+        /// <summary>
         /// Gets the maximum spendable balance on an account, along with the fee required to spend it.
         /// </summary>
         /// <param name="request">The request parameters.</param>
@@ -608,7 +644,7 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 var context = new TransactionBuildContext(
                     new WalletAccountReference(request.WalletName, request.AccountName),
                     new[] { new Recipient { Amount = request.Amount, ScriptPubKey = destination } }.ToList(),
-                    request.Password)
+                    request.Password, request.OpReturnData)
                 {
                     TransactionFee = string.IsNullOrEmpty(request.FeeAmount) ? null : Money.Parse(request.FeeAmount),
                     MinConfirmations = request.AllowUnconfirmed ? 0 : 1,
@@ -660,7 +696,7 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
 
             try
             {
-                var transaction = new Transaction(request.Hex);
+                var transaction = Transaction.Load(request.Hex, this.network);
 
                 WalletSendTransactionModel model = new WalletSendTransactionModel
                 {
@@ -670,16 +706,24 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
 
                 foreach (var output in transaction.Outputs)
                 {
+                    var isUnspendable = output.ScriptPubKey.IsUnspendable;
                     model.Outputs.Add(new TransactionOutputModel
                     {
-                        Address = output.ScriptPubKey.GetDestinationAddress(this.network).ToString(),
+                        Address = isUnspendable ? null : output.ScriptPubKey.GetDestinationAddress(this.network).ToString(),
                         Amount = output.Value,
+                        OpReturnData = isUnspendable ? Encoding.UTF8.GetString(output.ScriptPubKey.ToOps().Last().PushData) : null
                     });
                 }
 
-                this.walletManager.ProcessTransaction(transaction, null, null, false);
-
                 this.broadcasterManager.BroadcastTransactionAsync(transaction).GetAwaiter().GetResult();
+
+                TransactionBroadcastEntry transactionBroadCastEntry = this.broadcasterManager.GetTransaction(transaction.GetHash());
+
+                if (!string.IsNullOrEmpty(transactionBroadCastEntry?.ErrorMessage))
+                {                    
+                    this.logger.LogError("Exception occurred: {0}", transactionBroadCastEntry.ErrorMessage);
+                    return ErrorHelpers.BuildErrorResponse(HttpStatusCode.BadRequest, transactionBroadCastEntry.ErrorMessage, "Transaction Exception");
+                }
 
                 return this.Json(model);
             }
@@ -738,6 +782,34 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 return this.Json(result.Name);
             }
             catch (Exception e)
+            {
+                this.logger.LogError("Exception occurred: {0}", e.ToString());
+                return ErrorHelpers.BuildErrorResponse(HttpStatusCode.BadRequest, e.Message, e.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets a list of accounts for the specified wallet.
+        /// </summary>
+        /// <returns>The list of accounts for the specified wallet</returns>
+        [Route("accounts")]
+        [HttpGet]
+        public IActionResult ListAccounts([FromQuery]ListAccountsModel request)
+        {
+            Guard.NotNull(request, nameof(request));
+
+            // checks the request is valid
+            if (!this.ModelState.IsValid)
+            {
+                return BuildErrorResponse(this.ModelState);
+            }
+
+            try
+            {
+                var result = this.walletManager.GetAccounts(request.WalletName);
+                return this.Json(result.Select(a => a.Name));
+            }
+            catch(Exception e)
             {
                 this.logger.LogError("Exception occurred: {0}", e.ToString());
                 return ErrorHelpers.BuildErrorResponse(HttpStatusCode.BadRequest, e.Message, e.ToString());
@@ -873,15 +945,15 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 {
                     // From the list of removed transactions, check which one is the oldest and retrieve the block right before that time.
                     DateTimeOffset earliestDate = result.Min(r => r.creationTime);
-                    ChainedBlock chainedBlock = this.chain.GetBlock(this.chain.GetHeightAtTime(earliestDate.DateTime));
+                    ChainedHeader chainedHeader = this.chain.GetBlock(this.chain.GetHeightAtTime(earliestDate.DateTime));
 
                     // Update the wallet and save it to the file system.
                     Wallet wallet = this.walletManager.GetWallet(request.WalletName);
-                    wallet.SetLastBlockDetailsByCoinType(this.coinType, chainedBlock);
+                    wallet.SetLastBlockDetailsByCoinType(this.coinType, chainedHeader);
                     this.walletManager.SaveWallet(wallet);
 
                     // Start the syncing process from the block before the earliest transaction was seen.
-                    this.walletSyncManager.SyncFromHeight(chainedBlock.Height - 1);
+                    this.walletSyncManager.SyncFromHeight(chainedHeader.Height - 1);
                 }
 
                 IEnumerable<RemovedTransactionModel> model = result.Select(r => new RemovedTransactionModel
@@ -941,7 +1013,7 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 return BuildErrorResponse(this.ModelState);
             }
 
-            ChainedBlock block = this.chain.GetBlock(uint256.Parse(model.Hash));
+            ChainedHeader block = this.chain.GetBlock(uint256.Parse(model.Hash));
 
             if (block == null)
             {

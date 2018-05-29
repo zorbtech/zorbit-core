@@ -94,7 +94,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// </summary>
         /// <param name="coinType">The type of the coin this account is for.</param>
         /// <param name="block">The block whose details are used to update the wallet.</param>
-        public void SetLastBlockDetailsByCoinType(CoinType coinType, ChainedBlock block)
+        public void SetLastBlockDetailsByCoinType(CoinType coinType, ChainedHeader block)
         {
             AccountRoot accountRoot = this.AccountsRoot.SingleOrDefault(a => a.CoinType == coinType);
 
@@ -773,6 +773,19 @@ namespace Stratis.Bitcoin.Features.Wallet
             }
 
             return this.Transactions.Where(t => t.IsSpendable());
+        }
+
+        /// <summary>
+        /// Get the address total spendable value for both confirmed and unconfirmed UTXO.
+        /// </summary>
+        public (Money confirmedAmount, Money unConfirmedAmount) GetSpendableAmount()
+        {
+            List<TransactionData> allTransactions = this.Transactions.ToList();
+
+            long confirmed = allTransactions.Sum(t => t.SpendableAmount(true));
+            long total = allTransactions.Sum(t => t.SpendableAmount(false));
+
+            return (confirmed, total - confirmed);
         }
     }
 

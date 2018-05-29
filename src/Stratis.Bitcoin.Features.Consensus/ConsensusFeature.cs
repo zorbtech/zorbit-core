@@ -147,6 +147,16 @@ namespace Stratis.Bitcoin.Features.Consensus
             ConsensusSettings.PrintHelp(network);
         }
 
+        /// <summary>
+        /// Get the default configuration.
+        /// </summary>
+        /// <param name="builder">The string builder to add the settings to.</param>
+        /// <param name="network">The network to base the defaults off.</param>
+        public static void BuildDefaultConfigurationFile(StringBuilder builder, Network network)
+        {
+            ConsensusSettings.BuildDefaultConfigurationFile(builder, network);
+        }
+
         /// <inheritdoc />
         public override void Dispose()
         {
@@ -189,10 +199,9 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     services.AddSingleton<ICheckpoints, Checkpoints>();
                     services.AddSingleton<NBitcoin.Consensus.ConsensusOptions, PowConsensusOptions>();
-                    services.AddSingleton<IPowConsensusValidator, PowConsensusValidator>();
                     services.AddSingleton<DBreezeCoinView>();
                     services.AddSingleton<CoinView, CachedCoinView>();
-                    services.AddSingleton<LookaheadBlockPuller>();
+                    services.AddSingleton<LookaheadBlockPuller>().AddSingleton<ILookaheadBlockPuller, LookaheadBlockPuller>(provider => provider.GetService<LookaheadBlockPuller>()); ;
                     services.AddSingleton<IConsensusLoop, ConsensusLoop>();
                     services.AddSingleton<ConsensusManager>().AddSingleton<INetworkDifficulty, ConsensusManager>();
                     services.AddSingleton<IInitialBlockDownloadState, InitialBlockDownloadState>();
@@ -228,11 +237,9 @@ namespace Stratis.Bitcoin.Features.Consensus
                         }
 
                         services.AddSingleton<ICheckpoints, Checkpoints>();
-                        services.AddSingleton<IPowConsensusValidator, PosConsensusValidator>();
-                        services.AddSingleton<IPosConsensusValidator, PosConsensusValidator>();
                         services.AddSingleton<DBreezeCoinView>();
                         services.AddSingleton<CoinView, CachedCoinView>();
-                        services.AddSingleton<LookaheadBlockPuller>();
+                        services.AddSingleton<LookaheadBlockPuller>().AddSingleton<ILookaheadBlockPuller, LookaheadBlockPuller>(provider => provider.GetService<LookaheadBlockPuller>()); ;
                         services.AddSingleton<IConsensusLoop, ConsensusLoop>();
                         services.AddSingleton<StakeChainStore>().AddSingleton<IStakeChain, StakeChainStore>(provider => provider.GetService<StakeChainStore>());
                         services.AddSingleton<IStakeValidator, StakeValidator>();
@@ -267,7 +274,7 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     // rules that are inside the method ContextualCheckBlock
                     new TransactionLocktimeActivationRule(), // implements BIP113
-                    new CoinbaseHeighActivationRule(), // implements BIP34
+                    new CoinbaseHeightActivationRule(), // implements BIP34
                     new WitnessCommitmentsRule(), // BIP141, BIP144
                     new BlockSizeRule(),
 
@@ -275,7 +282,12 @@ namespace Stratis.Bitcoin.Features.Consensus
                     new BlockMerkleRootRule(),
                     new EnsureCoinbaseRule(),
                     new CheckPowTransactionRule(),
-                    new CheckSigOpsRule()
+                    new CheckSigOpsRule(),
+
+                    // rules that require the store to be loaded (coinview)
+                    new LoadCoinviewRule(),
+                    new TransactionDuplicationActivationRule(), // implements BIP30
+                    new PowCoinViewRule() // implements BIP68, MaxSigOps and BlockReward calculation
                 };
             }
         }
@@ -299,7 +311,7 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     // rules that are inside the method ContextualCheckBlock
                     new TransactionLocktimeActivationRule(), // implements BIP113
-                    new CoinbaseHeighActivationRule(), // implements BIP34
+                    new CoinbaseHeightActivationRule(), // implements BIP34
                     new WitnessCommitmentsRule(), // BIP141, BIP144 
                     new BlockSizeRule(),
 
@@ -313,7 +325,12 @@ namespace Stratis.Bitcoin.Features.Consensus
                     new CheckSigOpsRule(),
                     new PosFutureDriftRule(),
                     new PosCoinstakeRule(),
-                    new PosBlockSignatureRule()
+                    new PosBlockSignatureRule(),
+
+                    // rules that require the store to be loaded (coinview)
+                    new LoadCoinviewRule(),
+                    new TransactionDuplicationActivationRule(), // implements BIP30
+                    new PosCoinViewRule() // implements BIP68, MaxSigOps and BlockReward calculation
                 };
             }
         }
