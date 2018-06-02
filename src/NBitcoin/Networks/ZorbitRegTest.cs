@@ -5,7 +5,7 @@ using NBitcoin.DataEncoders;
 
 namespace NBitcoin
 {
-    public sealed class ZorbitRegTest : AbstractZorbitNetwork
+    public sealed class ZorbitRegTest : ZorbitNetwork
     {
         public ZorbitRegTest()
         {

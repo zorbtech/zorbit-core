@@ -8,7 +8,7 @@ using NBitcoin.DataEncoders;
 
 namespace NBitcoin
 {
-    public sealed class ZorbitMain : AbstractZorbitNetwork
+    public sealed class ZorbitMain : ZorbitNetwork
     {
         public ZorbitMain()
         {
@@ -108,8 +108,16 @@ namespace NBitcoin
         }
     }
 
+    public partial class Network
+    {
+        public static Network ZorbitMain => GetNetwork("ZorbitMain") ?? Register(new ZorbitMain());
 
-    public abstract class AbstractZorbitNetwork : Network
+        public static Network ZorbitTest => GetNetwork("ZorbitTest") ?? Register(new ZorbitTest());
+
+        public static Network ZorbitRegTest => GetNetwork("ZorbitRegTest") ?? Register(new ZorbitRegTest());
+    }
+
+    public abstract class ZorbitNetwork : Network
     {        
         /// <summary> The name of the root folder containing the different Zorbit blockchains (ZorbitMain, ZorbitTest, ZorbitRegTest). </summary>
         protected const string ZorbitRootFolderName = "zorbit";
@@ -161,7 +169,7 @@ namespace NBitcoin
         {
             uint nonce = 0;
             int count = 0;
-            Stopwatch sw = new Stopwatch();
+            var sw = new Stopwatch();
 
             var options = new ParallelOptions
             {
@@ -194,15 +202,5 @@ namespace NBitcoin
 
             return nonce;
         }
-    }
-
-
-    public partial class Network
-    {
-        public static Network ZorbitMain => GetNetwork("ZorbitMain") ?? Register(new ZorbitMain());
-
-        public static Network ZorbitTest => GetNetwork("ZorbitTest") ?? Register(new ZorbitTest());
-
-        public static Network ZorbitRegTest => GetNetwork("ZorbitRegTest") ?? Register(new ZorbitRegTest());
     }
 }
