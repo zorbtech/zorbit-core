@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FluentAssertions;
 using NBitcoin;
@@ -6,8 +7,9 @@ using Stratis.Bitcoin.Features.Consensus;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Controllers;
 using Stratis.Bitcoin.Features.Wallet.Models;
-using Stratis.Bitcoin.IntegrationTests.Builders;
-using Stratis.Bitcoin.IntegrationTests.EnvironmentMockUpHelpers;
+using Stratis.Bitcoin.IntegrationTests.Common;
+using Stratis.Bitcoin.IntegrationTests.Common.Builders;
+using Stratis.Bitcoin.IntegrationTests.Common.EnvironmentMockUpHelpers;
 using Xunit.Abstractions;
 
 namespace Stratis.Bitcoin.IntegrationTests.BlockStore
@@ -35,7 +37,7 @@ namespace Stratis.Bitcoin.IntegrationTests.BlockStore
         protected override void BeforeTest()
         {
             this.sharedSteps = new SharedSteps();
-            this.nodeGroupBuilder = new NodeGroupBuilder();
+            this.nodeGroupBuilder = new NodeGroupBuilder(Path.Combine(this.GetType().Name, this.CurrentTest.DisplayName));
         }
 
         protected override void AfterTest()
@@ -83,7 +85,18 @@ namespace Stratis.Bitcoin.IntegrationTests.BlockStore
         {
             var nodeCReceivingAddress = this.GetSecondUnusedAddressToAvoidClashWithMiningAddress(this.nodes[Charlie]);
 
-            var transactionBuildContext = SharedSteps.CreateTransactionBuildContext(WalletZero, AccountZero, WalletPassword, nodeCReceivingAddress.ScriptPubKey, Money.COIN * 1, FeeType.Medium, minConfirmations: 1);
+            var transactionBuildContext = SharedSteps.CreateTransactionBuildContext(
+                WalletZero,
+                AccountZero,
+                WalletPassword,
+                new[] {
+                    new Recipient {
+                        Amount = Money.COIN * 1,
+                        ScriptPubKey = nodeCReceivingAddress.ScriptPubKey
+                    }
+                },
+                FeeType.Medium
+                , 1);
 
             this.shorterChainTransaction = this.nodes[Bob].FullNode.WalletTransactionHandler().BuildTransaction(transactionBuildContext);
             this.shortChainTransactionFee = this.nodes[Bob].FullNode.WalletTransactionHandler().EstimateFee(transactionBuildContext);
@@ -101,7 +114,7 @@ namespace Stratis.Bitcoin.IntegrationTests.BlockStore
         private void charlie_mines_this_block()
         {
             this.sharedSteps.MineBlocks(1, this.nodes[Charlie], AccountZero, WalletZero, WalletPassword, this.shortChainTransactionFee.Satoshi);
-            this.sharedSteps.WaitForBlockStoreToSync(this.nodes[Bob], this.nodes[Charlie], this.nodes[Dave]);
+            this.sharedSteps.WaitForNodeToSync(this.nodes[Bob], this.nodes[Charlie], this.nodes[Dave]);
         }
 
         private void dave_confirms_transaction_is_present()
@@ -114,17 +127,14 @@ namespace Stratis.Bitcoin.IntegrationTests.BlockStore
         private void jings_connection_comes_back()
         {
             this.nodes[JingTheFastMiner].CreateRPCClient().AddNode(this.nodes[Bob].Endpoint);
-            this.sharedSteps.WaitForBlockStoreToSync(this.nodes[JingTheFastMiner], this.nodes[Bob], this.nodes[Charlie], this.nodes[Dave]);
+            this.sharedSteps.WaitForNodeToSync(this.nodes.Values.ToArray());
         }
-         
+
         private void bob_charlie_and_dave_reorg_to_jings_longest_chain()
         {
             TestHelper.WaitLoop(() => this.nodes[Bob].FullNode.Chain.Height == this.jingsBlockHeight);
-            this.nodes[Bob].FullNode.Chain.Height.Should().Be(this.jingsBlockHeight);
             TestHelper.WaitLoop(() => this.nodes[Charlie].FullNode.Chain.Height == this.jingsBlockHeight);
-            this.nodes[Charlie].FullNode.Chain.Height.Should().Be(this.jingsBlockHeight);
             TestHelper.WaitLoop(() => this.nodes[Dave].FullNode.Chain.Height == this.jingsBlockHeight);
-            this.nodes[Dave].FullNode.Chain.Height.Should().Be(this.jingsBlockHeight);
         }
 
         private void bobs_transaction_from_shorter_chain_is_now_missing()

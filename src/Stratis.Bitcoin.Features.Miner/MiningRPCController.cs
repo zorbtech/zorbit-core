@@ -10,8 +10,11 @@ using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Base.Deployments;
+using Stratis.Bitcoin.Controllers;
 using Stratis.Bitcoin.Features.Consensus;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
+using Stratis.Bitcoin.Features.Consensus.Rules;
+using Stratis.Bitcoin.Features.Consensus.Rules.CommonRules;
 using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
@@ -19,6 +22,7 @@ using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
 using Stratis.Bitcoin.Interfaces;
+using Stratis.Bitcoin.Mining;
 using Stratis.Bitcoin.Utilities;
 using BlockTemplateResponse = NBitcoin.RPC.Dtos.BlockTemplate;
 
@@ -45,7 +49,8 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <summary>Wallet manager.</summary>
         private readonly IWalletManager walletManager;
 
-        private readonly IAssemblerFactory blockAssemblerFactory;
+        // <summary>Builder that creates a proof-of-work block template.</summary>
+        private readonly IBlockProvider blockProvider;
 
         private readonly IChainState chainState;
 
@@ -70,7 +75,7 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <param name="walletManager">The wallet manager.</param>
         /// <param name="posMinting">PoS staker or null if PoS staking is not enabled.</param>
         public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager,
-            IAssemblerFactory blockAssemblerFactory, MinerSettings minerSettings, INetworkDifficulty networkDifficulty,
+            IBlockProvider blockProvider, MinerSettings minerSettings, INetworkDifficulty networkDifficulty,
             MiningRpcHelper miningRpcHelper, MempoolManager mempoolManager, IConsensusLoop consensusLoop, IPosMinting posMinting = null) : base(fullNode: fullNode)
         {
             Guard.NotNull(powMining, nameof(powMining));
@@ -83,7 +88,7 @@ namespace Stratis.Bitcoin.Features.Miner
             this.walletManager = walletManager;
             this.powMining = powMining;
             this.posMinting = posMinting;
-            this.blockAssemblerFactory = blockAssemblerFactory;
+            this.blockProvider = blockProvider;
             this.networkDifficulty = networkDifficulty;
             this.miningRpcHelper = miningRpcHelper;
             this.mempoolManager = mempoolManager;
@@ -189,7 +194,7 @@ namespace Stratis.Bitcoin.Features.Miner
             }
             else if (mode.Equals(BlockTemplateRequestMode.Template))
             {
-                var template = this.blockAssemblerFactory.Create(this.chainState.ConsensusTip).CreateNewBlock(BitcoinAddress.Create(this.minerSettings.MineAddress, this.fullNode.Network).ScriptPubKey);
+                var template = this.blockProvider.BuildPowBlock(this.chainState.ConsensusTip, BitcoinAddress.Create(this.minerSettings.MineAddress, this.Network).ScriptPubKey);
                 var blockTemplate = new BlockTemplateResponse
                 {
                     Version = (uint)template.Block.Header.Version,
@@ -217,8 +222,8 @@ namespace Stratis.Bitcoin.Features.Miner
             var miningInfo = new MiningInfo()
             {
                 Blocks = this.chainState?.ConsensusTip?.Height ?? 0,
-                CurrentBlockSize = BlockAssembler.lastBlockSize,
-                CurrentBlockWeight = BlockAssembler.lastBlockWeight,
+                CurrentBlockSize = this.blockProvider.GetLastBlockSize(),
+                CurrentBlockWeight = this.blockProvider.GetLastBlockWeight(),
                 Difficulty = this.networkDifficulty?.GetNetworkDifficulty()?.Difficulty ?? 0,
                 Chain = this.fullNode.Network.ToString(),
                 NetworkHashps = this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, -1, this.chainState?.ConsensusTip?.Height ?? 0)
@@ -256,7 +261,7 @@ namespace Stratis.Bitcoin.Features.Miner
         public Block GetBlock(int height)
         {
             var chainedBlock = this.consensusLoop.Chain.GetBlock(height);
-            var block = new Block(chainedBlock.Header);
+            var block = Block.Load(chainedBlock.Header.ToBytes(), this.Network);
             return block;
         }
 
@@ -278,7 +283,7 @@ namespace Stratis.Bitcoin.Features.Miner
 
             try
             {
-                block = new Block(this.miningRpcHelper.GetBytesFromHex(blockHex));
+                block = Block.Load(this.miningRpcHelper.GetBytesFromHex(blockHex), this.Network);
             }
             catch(Exception)
             {
@@ -290,7 +295,7 @@ namespace Stratis.Bitcoin.Features.Miner
                 throw new RPCServerException(RPCErrorCode.RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
             }
 
-            var hash = block.GetHash(this.fullNode.Network.NetworkOptions);
+            var hash = block.GetHash();
             var chainedBlock = this.consensusLoop.Chain.GetBlock(hash);
 
             bool blockPresent = false;
@@ -307,8 +312,9 @@ namespace Stratis.Bitcoin.Features.Miner
                 if (previousBlock != null)
                 {
                     // if include witness is enabled - not yet implemented
-                    var consensusValidator = this.fullNode.NodeService<IPowConsensusValidator>();
-                    consensusValidator.UpdateUncommittedBlockStructures(block, previousBlock);
+                    var ruleRegistration = this.fullNode.NodeService<IRuleRegistration>();
+                    var powRule = (PowCoinviewRule)ruleRegistration.GetRules().FirstOrDefault(x => x is PowCoinviewRule);
+                    powRule.UpdateUncommittedBlockStructures(block, previousBlock);
                 }
             }
 
@@ -343,7 +349,7 @@ namespace Stratis.Bitcoin.Features.Miner
             return JsonConvert.SerializeObject(new { result = value });
         }
 
-        private BitcoinBlockTransaction[] GetTransactions(BlockTemplate blockTemplate)
+        private BitcoinBlockTransaction[] GetTransactions(Mining.BlockTemplate blockTemplate)
         {
             var transactions = new List<BitcoinBlockTransaction>();
 
@@ -385,7 +391,7 @@ namespace Stratis.Bitcoin.Features.Miner
             return aux;
         }
 
-        private string GetWitnessCommitment(BlockTemplate template, string[] rules)
+        private string GetWitnessCommitment(Mining.BlockTemplate template, string[] rules)
         {
             if (rules == null || rules.Length == 0)
                 return null;

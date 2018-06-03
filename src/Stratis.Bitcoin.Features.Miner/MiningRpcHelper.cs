@@ -10,7 +10,7 @@
 
     public class MiningRpcHelper
     {
-        public double CalculateNetworkHashps(ChainedBlock tip, ChainBase chain, long difficultyAdjustmentInterval, long lookup, int height)
+        public double CalculateNetworkHashps(ChainedHeader tip, ChainBase chain, long difficultyAdjustmentInterval, long lookup, int height)
         {
             if (height >= 0 && height < tip?.Height)
                 tip = chain.GetBlock(height);
@@ -61,7 +61,7 @@
             return Encoders.Hex.DecodeData(hex);
         }
 
-        public ChainedBlock CloneBlock(ChainedBlock pb)
+        public ChainedHeader CloneBlock(ChainedHeader pb)
         {
             IFormatter formatter = new BinaryFormatter();
             Stream stream = new MemoryStream();
@@ -69,7 +69,7 @@
             {
                 formatter.Serialize(stream, pb);
                 stream.Seek(0, SeekOrigin.Begin);
-                return (ChainedBlock)formatter.Deserialize(stream);
+                return (ChainedHeader)formatter.Deserialize(stream);
             }
         }
 

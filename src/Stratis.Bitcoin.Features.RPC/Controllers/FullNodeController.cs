@@ -8,6 +8,7 @@ using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json.Linq;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
+using Stratis.Bitcoin.Controllers;
 using Stratis.Bitcoin.Features.BlockStore;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
 using Stratis.Bitcoin.Features.RPC.Models;
@@ -98,7 +99,7 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
 
             if (verbose != 0)
             {
-                ChainedBlock block = await this.GetTransactionBlockAsync(trxid);
+                ChainedHeader block = await this.GetTransactionBlockAsync(trxid);
                 return new TransactionVerboseModel(trx, this.Network, block, this.ChainState?.ConsensusTip);
             }
             else
@@ -285,9 +286,9 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             return res;
         }
 
-        private async Task<ChainedBlock> GetTransactionBlockAsync(uint256 trxid)
+        private async Task<ChainedHeader> GetTransactionBlockAsync(uint256 trxid)
         {
-            ChainedBlock block = null;
+            ChainedHeader block = null;
             var blockStore = this.FullNode.NodeFeature<IBlockStore>();
 
             uint256 blockid = blockStore != null ? await blockStore.GetTrxBlockIdAsync(trxid) : null;
@@ -321,7 +322,7 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             double txTotal;
             double chainTxRate = 1;
 
-            var tipBlock = new Block(this.Chain?.Tip.Header);
+            var tipBlock = Block.Load(this.Chain?.Tip.Header.ToBytes(), this.Network);
 
             if (tipBlock.Transactions.Count < chainData.Transactions.Count)
             {

@@ -160,7 +160,6 @@ namespace Stratis.Bitcoin.Builder
                 throw new InvalidOperationException("full node already built");
             this.fullNodeBuilt = true;
 
-            this.NodeSettings?.LoadConfiguration();
 
             if(this.NodeSettings != null && this.NodeSettings.TorEnabled)
             {
@@ -184,9 +183,9 @@ namespace Stratis.Bitcoin.Builder
                     throw new NodeBuilderException(message);
                 }
             }
-
             this.Services = this.BuildServices();
 
+            // Print command-line help
             if (this.NodeSettings?.PrintHelpAndExit ?? false)
             {
                 foreach (var featureRegistration in this.Features.FeatureRegistrations)
@@ -200,10 +199,13 @@ namespace Stratis.Bitcoin.Builder
                 return null;
             }
 
+            // Load configuration file
+            this.NodeSettings?.LoadConfiguration(this.Features.FeatureRegistrations);
+
             var fullNodeServiceProvider = this.Services.BuildServiceProvider();
             this.ConfigureServices(fullNodeServiceProvider);
 
-            //obtain the nodeSettings from the service (it's set used FullNodeBuilder.UseNodeSettings)
+            // Obtain the nodeSettings from the service (it's set used FullNodeBuilder.UseNodeSettings)
             var nodeSettings = fullNodeServiceProvider.GetService<NodeSettings>();
             if (nodeSettings == null)
                 throw new NodeBuilderException("NodeSettings not specified");

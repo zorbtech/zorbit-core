@@ -11,7 +11,9 @@ using Stratis.Bitcoin.Builder;
 using Stratis.Bitcoin.Builder.Feature;
 using Stratis.Bitcoin.Configuration;
 using Stratis.Bitcoin.Configuration.Logging;
+using Stratis.Bitcoin.Configuration.Settings;
 using Stratis.Bitcoin.Connection;
+using Stratis.Bitcoin.Consensus;
 using Stratis.Bitcoin.Features.Consensus.CoinViews;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
 using Stratis.Bitcoin.Features.Consensus.Rules;
@@ -147,6 +149,16 @@ namespace Stratis.Bitcoin.Features.Consensus
             ConsensusSettings.PrintHelp(network);
         }
 
+        /// <summary>
+        /// Get the default configuration.
+        /// </summary>
+        /// <param name="builder">The string builder to add the settings to.</param>
+        /// <param name="network">The network to base the defaults off.</param>
+        public static void BuildDefaultConfigurationFile(StringBuilder builder, Network network)
+        {
+            ConsensusSettings.BuildDefaultConfigurationFile(builder, network);
+        }
+
         /// <inheritdoc />
         public override void Dispose()
         {
@@ -163,7 +175,7 @@ namespace Stratis.Bitcoin.Features.Consensus
                 cache.FlushAsync().GetAwaiter().GetResult();
                 cache.Dispose();
             }
-           
+
             this.dBreezeCoinView.Dispose();
         }
     }
@@ -189,10 +201,9 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     services.AddSingleton<ICheckpoints, Checkpoints>();
                     services.AddSingleton<NBitcoin.Consensus.ConsensusOptions, PowConsensusOptions>();
-                    services.AddSingleton<IPowConsensusValidator, PowConsensusValidator>();
                     services.AddSingleton<DBreezeCoinView>();
                     services.AddSingleton<CoinView, CachedCoinView>();
-                    services.AddSingleton<LookaheadBlockPuller>();
+                    services.AddSingleton<LookaheadBlockPuller>().AddSingleton<ILookaheadBlockPuller, LookaheadBlockPuller>(provider => provider.GetService<LookaheadBlockPuller>()); ;
                     services.AddSingleton<IConsensusLoop, ConsensusLoop>();
                     services.AddSingleton<ConsensusManager>().AddSingleton<INetworkDifficulty, ConsensusManager>();
                     services.AddSingleton<IInitialBlockDownloadState, InitialBlockDownloadState>();
@@ -222,17 +233,12 @@ namespace Stratis.Bitcoin.Features.Consensus
                         fullNodeBuilder.Network.Consensus.Options = new PosConsensusOptions();
 
                         if (fullNodeBuilder.Network.IsTest())
-                        {
                             fullNodeBuilder.Network.Consensus.Option<PosConsensusOptions>().CoinbaseMaturity = 10;
-                            fullNodeBuilder.Network.Consensus.Option<PosConsensusOptions>().StakeMinConfirmations = 10;
-                        }
 
                         services.AddSingleton<ICheckpoints, Checkpoints>();
-                        services.AddSingleton<IPowConsensusValidator, PosConsensusValidator>();
-                        services.AddSingleton<IPosConsensusValidator, PosConsensusValidator>();
                         services.AddSingleton<DBreezeCoinView>();
                         services.AddSingleton<CoinView, CachedCoinView>();
-                        services.AddSingleton<LookaheadBlockPuller>();
+                        services.AddSingleton<LookaheadBlockPuller>().AddSingleton<ILookaheadBlockPuller, LookaheadBlockPuller>(provider => provider.GetService<LookaheadBlockPuller>()); ;
                         services.AddSingleton<IConsensusLoop, ConsensusLoop>();
                         services.AddSingleton<StakeChainStore>().AddSingleton<IStakeChain, StakeChainStore>(provider => provider.GetService<StakeChainStore>());
                         services.AddSingleton<IStakeValidator, StakeValidator>();
@@ -267,7 +273,7 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     // rules that are inside the method ContextualCheckBlock
                     new TransactionLocktimeActivationRule(), // implements BIP113
-                    new CoinbaseHeighActivationRule(), // implements BIP34
+                    new CoinbaseHeightActivationRule(), // implements BIP34
                     new WitnessCommitmentsRule(), // BIP141, BIP144
                     new BlockSizeRule(),
 
@@ -275,7 +281,12 @@ namespace Stratis.Bitcoin.Features.Consensus
                     new BlockMerkleRootRule(),
                     new EnsureCoinbaseRule(),
                     new CheckPowTransactionRule(),
-                    new CheckSigOpsRule()
+                    new CheckSigOpsRule(),
+
+                    // rules that require the store to be loaded (coinview)
+                    new LoadCoinviewRule(),
+                    new TransactionDuplicationActivationRule(), // implements BIP30
+                    new PowCoinviewRule() // implements BIP68, MaxSigOps and BlockReward calculation
                 };
             }
         }
@@ -299,7 +310,7 @@ namespace Stratis.Bitcoin.Features.Consensus
 
                     // rules that are inside the method ContextualCheckBlock
                     new TransactionLocktimeActivationRule(), // implements BIP113
-                    new CoinbaseHeighActivationRule(), // implements BIP34
+                    new CoinbaseHeightActivationRule(), // implements BIP34
                     new WitnessCommitmentsRule(), // BIP141, BIP144 
                     new BlockSizeRule(),
 
@@ -313,7 +324,12 @@ namespace Stratis.Bitcoin.Features.Consensus
                     new CheckSigOpsRule(),
                     new PosFutureDriftRule(),
                     new PosCoinstakeRule(),
-                    new PosBlockSignatureRule()
+                    new PosBlockSignatureRule(),
+
+                    // rules that require the store to be loaded (coinview)
+                    new LoadCoinviewRule(),
+                    new TransactionDuplicationActivationRule(), // implements BIP30
+                    new PosCoinviewRule() // implements BIP68, MaxSigOps and BlockReward calculation
                 };
             }
         }
