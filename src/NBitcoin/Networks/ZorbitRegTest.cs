@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using NBitcoin.BouncyCastle.Math;
 using NBitcoin.DataEncoders;
+using NBitcoin.Protocol;
 
 namespace NBitcoin
 {
@@ -26,13 +27,10 @@ namespace NBitcoin
             this.MinTxFee = 10000;
             this.FallbackFee = 60000;
             this.MinRelayTxFee = 10000;
-            this.Consensus = new Consensus
-            {
-                MajorityEnforceBlockUpgrade = 750,
-                MajorityRejectBlockOutdated = 950,
-                MajorityWindow = 1000
-            };
 
+            this.Consensus.MajorityEnforceBlockUpgrade = 750;
+            this.Consensus.MajorityRejectBlockOutdated = 950;
+            this.Consensus.MajorityWindow = 1000;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
@@ -66,6 +64,10 @@ namespace NBitcoin
                 { 0, new CheckpointInfo(new uint256("0x301b0f400afd80b21830101ca2bf847a6a56e8b6ff99e2320798c452c34f6c3b"), new uint256("0x0000000000000000000000000000000000000000000000000000000000000000")) }
             };
 
+            this.DNSSeeds = new List<DNSSeedData>();
+            this.SeedNodes = new List<NetworkAddress>();
+
+            this.Base58Prefixes = new byte[12][];
             this.Base58Prefixes[(int)Base58Type.PUBKEY_ADDRESS] = new byte[] { (127) };
             this.Base58Prefixes[(int)Base58Type.SCRIPT_ADDRESS] = new byte[] { (65) };
             this.Base58Prefixes[(int)Base58Type.SECRET_KEY] = new byte[] { (63 + 128) };
@@ -80,6 +82,7 @@ namespace NBitcoin
             this.Base58Prefixes[(int)Base58Type.COLORED_ADDRESS] = new byte[] { 0x13 };
 
             var encoder = new Bech32Encoder("zrr");
+            this.Bech32Encoders = new Bech32Encoder[2];
             this.Bech32Encoders[(int)Bech32Type.WITNESS_PUBKEY_ADDRESS] = encoder;
             this.Bech32Encoders[(int)Bech32Type.WITNESS_SCRIPT_ADDRESS] = encoder;
         }

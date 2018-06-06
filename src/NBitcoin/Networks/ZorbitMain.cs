@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NBitcoin.BouncyCastle.Math;
 using NBitcoin.DataEncoders;
+using NBitcoin.Protocol;
 
 namespace NBitcoin
 {
@@ -29,13 +30,10 @@ namespace NBitcoin
             this.MinRelayTxFee = 10000;
             this.MaxTimeOffsetSeconds = ZorbitMaxTimeOffsetSeconds;
             this.MaxTipAge = ZorbitDefaultMaxTipAgeInSeconds;
-            this.Consensus = new Consensus
-            {
-                MajorityEnforceBlockUpgrade = 750,
-                MajorityRejectBlockOutdated = 950,
-                MajorityWindow = 1000
-            };
 
+            this.Consensus.MajorityEnforceBlockUpgrade = 750;
+            this.Consensus.MajorityRejectBlockOutdated = 950;
+            this.Consensus.MajorityWindow = 1000;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP34] = 0;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP65] = 0;
             this.Consensus.BuriedDeployments[BuriedDeployments.BIP66] = 0;
@@ -66,6 +64,10 @@ namespace NBitcoin
                 { 0, new CheckpointInfo(new uint256("0x000000252806976858281f397637f0d063743dfda42ccba1a995e5d30e359716"), new uint256("0x0000000000000000000000000000000000000000000000000000000000000000")) }
             };
 
+            this.DNSSeeds = new List<DNSSeedData>();
+            this.SeedNodes = new List<NetworkAddress>();
+
+            this.Base58Prefixes = new byte[12][];
             this.Base58Prefixes[(int)Base58Type.PUBKEY_ADDRESS] = new byte[] { (142) };
             this.Base58Prefixes[(int)Base58Type.SCRIPT_ADDRESS] = new byte[] { (80) };
             this.Base58Prefixes[(int)Base58Type.SECRET_KEY] = new byte[] { (63 + 128) };
@@ -80,6 +82,7 @@ namespace NBitcoin
             this.Base58Prefixes[(int)Base58Type.COLORED_ADDRESS] = new byte[] { 0x13 };
 
             var encoder = new Bech32Encoder("zrb");
+            this.Bech32Encoders = new Bech32Encoder[2];
             this.Bech32Encoders[(int)Bech32Type.WITNESS_PUBKEY_ADDRESS] = encoder;
             this.Bech32Encoders[(int)Bech32Type.WITNESS_SCRIPT_ADDRESS] = encoder;
 
