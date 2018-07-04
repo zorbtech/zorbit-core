@@ -4,10 +4,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json.Linq;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
 using Stratis.Bitcoin.Controllers;
+using Stratis.Bitcoin.Features.BlockStore;
 using Stratis.Bitcoin.Features.Consensus.Interfaces;
 using Stratis.Bitcoin.Features.RPC.Models;
 using Stratis.Bitcoin.Interfaces;
@@ -171,6 +173,49 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
             return model;
         }
 
+        [ActionName("getnetworkinfo")]
+        [ActionDescription("Gets network information about the node's connection to the network")]
+        public NetworkInfo GetNetworkInfo()
+        {
+            var result = new NetworkInfo()
+            {
+                Version = this.FullNode?.Version?.ToString() ?? "0",
+                SubVersion = this.ConnectionManager?.Parameters?.UserAgent ?? "0",
+                ProtocolVersion = (int)(this.Settings?.ProtocolVersion ?? NodeSettings.SupportedProtocolVersion),
+                NetworkActive = true,
+                LocalRelay = this.ConnectionManager?.Parameters?.IsRelay ?? false,
+                Connections = this.ConnectionManager?.ConnectedPeers?.Count() ?? 0,
+            };
+
+            return result;
+        }
+
+        [ActionName("getblockchaininfo")]
+        [ActionDescription("Get ")]
+        public BlockChainInfo GetBlockChainInfo()
+        {
+            var chainInfo = new BlockChainInfo()
+            {
+                Chain = this.Chain?.Network.ToString(),
+                Blocks = this.ChainState?.ConsensusTip?.Height ?? 0,
+                Headers = this.consensusLoop?.Chain?.Height ?? -1,
+                BestBlockHash = this.ChainState?.ConsensusTip?.HashBlock?.ToString(),
+                Difficulty = this.GetNetworkDifficulty()?.Difficulty ?? 0,
+                MedianTime = this.Chain?.Tip.GetMedianTimePast().ToUnixTimeSeconds() ?? 0,
+                VerificationProgress = this.GetVerificationProgress(),
+                Pruned = this.GetPruneStatus()
+            };
+
+            return chainInfo;
+        }
+
+        [ActionName("getdifficulty")]
+        [ActionDescription("Get the current proof of work difficulty")]
+        public double GetDifficulty()
+        {
+            return this.GetNetworkDifficulty()?.Difficulty ?? 0;
+        }
+
         /// <summary>
         /// Implements getblockheader RPC call.
         /// </summary>
@@ -256,6 +301,45 @@ namespace Stratis.Bitcoin.Features.RPC.Controllers
         private Target GetNetworkDifficulty()
         {
             return this.networkDifficulty?.GetNetworkDifficulty();
+        }
+
+        private double GetVerificationProgress()
+        {
+            if (this.Chain?.Tip.Header == null)
+                return 0.0;
+
+            // requires total transaction count,
+            // timestamp of last known number of transactions,
+            // estimated number of transactions per second since timestamp
+            // ChainTxData.nTime = timestamp of last known number of transactions? -- UNIX timestamp of last known number of transactions
+            // ChainTxData.nTxCount = total transaction count? -- // total number of transactions between genesis and that timestamp (the tx=... number in the SetBestChain debug.log lines)
+            // ChainTxData.dTxRate = estimated number of transactions per second since timestamp? -- estimated number of transactions per second after that timestamp
+
+            var chainData = this.Network.GetGenesis();
+
+            var now = DateTime.Now.ToUnixTimestamp();
+
+            double txTotal;
+            double chainTxRate = 1;
+
+            var tipBlock = Block.Load(this.Chain?.Tip.Header.ToBytes(), this.Network);
+
+            if (tipBlock.Transactions.Count < chainData.Transactions.Count)
+            {
+                txTotal = chainData.Transactions.Count + (now - chainData.Header.BlockTime.ToUnixTimeSeconds()) * chainTxRate;
+            }
+            else
+            {
+                txTotal = tipBlock.Transactions.Count + (now - tipBlock.Header.BlockTime.ToUnixTimeSeconds()) * chainTxRate;
+            }
+
+            return tipBlock.Transactions.Count / txTotal;
+        }
+
+        private bool GetPruneStatus()
+        {
+            var blockSettings = this.FullNode.NodeService<StoreSettings>();
+            return blockSettings?.Prune ?? false;
         }
     }
 }

@@ -5,13 +5,26 @@ using System.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using NBitcoin.RPC;
+using NBitcoin.RPC.Dtos;
+using Newtonsoft.Json;
+using Stratis.Bitcoin.Base;
+using Stratis.Bitcoin.Base.Deployments;
 using Stratis.Bitcoin.Controllers;
+using Stratis.Bitcoin.Features.Consensus;
+using Stratis.Bitcoin.Features.Consensus.Interfaces;
+using Stratis.Bitcoin.Features.Consensus.Rules;
+using Stratis.Bitcoin.Features.Consensus.Rules.CommonRules;
+using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
 using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
+using Stratis.Bitcoin.Interfaces;
+using Stratis.Bitcoin.Mining;
 using Stratis.Bitcoin.Utilities;
+using BlockTemplateResponse = NBitcoin.RPC.Dtos.BlockTemplate;
 
 namespace Stratis.Bitcoin.Features.Miner
 {
@@ -36,6 +49,23 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <summary>Wallet manager.</summary>
         private readonly IWalletManager walletManager;
 
+        // <summary>Builder that creates a proof-of-work block template.</summary>
+        private readonly IBlockProvider blockProvider;
+
+        private readonly IChainState chainState;
+
+        private readonly INetworkDifficulty networkDifficulty;
+
+        private readonly IConsensusLoop consensusLoop;
+
+        private readonly MempoolManager mempoolManager;
+
+        private readonly NodeDeployments nodeDeployments;
+
+        private readonly MinerSettings minerSettings;
+
+        private readonly MiningRpcHelper miningRpcHelper;
+
         /// <summary>
         /// Initializes a new instance of the object.
         /// </summary>
@@ -44,7 +74,9 @@ namespace Stratis.Bitcoin.Features.Miner
         /// <param name="loggerFactory">Factory to be used to create logger for the node.</param>
         /// <param name="walletManager">The wallet manager.</param>
         /// <param name="posMinting">PoS staker or null if PoS staking is not enabled.</param>
-        public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager, IPosMinting posMinting = null) : base(fullNode: fullNode)
+        public MiningRPCController(IPowMining powMining, IFullNode fullNode, ILoggerFactory loggerFactory, IWalletManager walletManager,
+            IBlockProvider blockProvider, MinerSettings minerSettings, INetworkDifficulty networkDifficulty,
+            MiningRpcHelper miningRpcHelper, MempoolManager mempoolManager, IConsensusLoop consensusLoop, IPosMinting posMinting = null) : base(fullNode: fullNode)
         {
             Guard.NotNull(powMining, nameof(powMining));
             Guard.NotNull(fullNode, nameof(fullNode));
@@ -56,6 +88,15 @@ namespace Stratis.Bitcoin.Features.Miner
             this.walletManager = walletManager;
             this.powMining = powMining;
             this.posMinting = posMinting;
+            this.blockProvider = blockProvider;
+            this.networkDifficulty = networkDifficulty;
+            this.miningRpcHelper = miningRpcHelper;
+            this.mempoolManager = mempoolManager;
+            this.consensusLoop = consensusLoop;
+
+            this.minerSettings = this.fullNode.NodeService<MinerSettings>();
+            this.chainState = this.fullNode.NodeService<IChainState>();
+            this.nodeDeployments = this.fullNode.NodeService<NodeDeployments>();
         }
 
         /// <summary>
@@ -72,7 +113,7 @@ namespace Stratis.Bitcoin.Features.Miner
             this.logger.LogTrace("({0}:{1})", nameof(blockCount), blockCount);
             if (blockCount <= 0)
             {
-                throw new RPCServerException(NBitcoin.RPC.RPCErrorCode.RPC_INVALID_REQUEST, "The number of blocks to mine must be higher than zero.");
+                throw new RPCServerException(RPCErrorCode.RPC_INVALID_REQUEST, "The number of blocks to mine must be higher than zero.");
             }
 
             WalletAccountReference accountReference = this.GetAccount();
@@ -139,6 +180,231 @@ namespace Stratis.Bitcoin.Features.Miner
             return model;
         }
 
+        [ActionName("getblocktemplate")]
+        [ActionDescription("Get the template for PoW mining blocks")]
+        public string GetBlockTemplate(BlockTemplateRequestMode mode, string capabilitiesJson, string rulesJson, string data)
+        {
+            // deserializing these this late shouldn't be required, temporary workaround until root cause resolved
+            var capabilities = JsonConvert.DeserializeObject<string[]>(capabilitiesJson);
+            var rules = JsonConvert.DeserializeObject<string[]>(rulesJson);
+
+            if (mode.Equals(BlockTemplateRequestMode.Submit) || mode.Equals(BlockTemplateRequestMode.Proposal))
+            {
+                return this.SubmitBlock(data, null);
+            }
+            else if (mode.Equals(BlockTemplateRequestMode.Template))
+            {
+                var template = this.blockProvider.BuildPowBlock(this.chainState.ConsensusTip, BitcoinAddress.Create(this.minerSettings.MineAddress, this.Network).ScriptPubKey);
+                var blockTemplate = new BlockTemplateResponse
+                {
+                    Version = (uint)template.Block.Header.Version,
+                    PreviousBlockhash = this.chainState?.ConsensusTip?.HashBlock?.ToString(),
+                    CoinbaseValue = template.Block.Transactions[0].Outputs[0].Value,
+                    Target = template.Block.Header.Bits.ToUInt256().ToString(),
+                    NonceRange = "00000000ffffffff",
+                    CurTime = (uint)DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    Bits = template.Block.Header.Bits.ToString(),
+                    Height = (uint)(this.chainState?.ConsensusTip?.Height + 1 ?? 1),
+                    Transactions = this.GetTransactions(template),
+                    CoinbaseAux = this.GetCoinbaseFlags(),
+                    DefaultWitnessCommitment = this.GetWitnessCommitment(template, rules)
+                };
+
+                return GetJsonResultString(blockTemplate);
+            }
+            throw new NotImplementedException();
+        }
+
+        [ActionName("getmininginfo")]
+        [ActionDescription("Get mining-related information")]
+        public MiningInfo GetMiningInfo()
+        {
+            var miningInfo = new MiningInfo()
+            {
+                Blocks = this.chainState?.ConsensusTip?.Height ?? 0,
+                CurrentBlockSize = this.blockProvider.GetLastBlockSize(),
+                CurrentBlockWeight = this.blockProvider.GetLastBlockWeight(),
+                Difficulty = this.networkDifficulty?.GetNetworkDifficulty()?.Difficulty ?? 0,
+                Chain = this.fullNode.Network.ToString(),
+                NetworkHashps = this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, -1, this.chainState?.ConsensusTip?.Height ?? 0)
+            };
+
+            return miningInfo;
+        }
+
+        /// <summary>Get the estimated current or historical network hashes per second on the last number of blocks provided</summary>
+        /// <param name="lookup"></param>
+        /// <param name="height"></param>
+        /// <returns>Network Hash rate per second</returns>
+        [ActionName("getnetworkhashps")]
+        [ActionDescription("Get the estimated current or historical network hashes per second on the last number of blocks provided")]
+        public double GetNetworkHashps(long lookup, int height)
+        {
+            return this.miningRpcHelper.CalculateNetworkHashps(this.chainState?.ConsensusTip, this.Chain, this.fullNode.Network.Consensus.DifficultyAdjustmentInterval, lookup, height);
+        }
+
+        /// <summary>Accepts the transaction into mined blocks</summary>
+        /// <param name="transactionId">The transaction ID</param>
+        /// <param name="dummy">Deprecated. Must be 0 or null. Only included for backwards compatibility.</param>
+        /// <param name="fee">The fee value in Satoshis to add, or to subtract if negative</param>
+        /// <returns>True if accepted, false otherwise</returns>
+        [ActionName("prioritisetransaction")]
+        [ActionDescription("Accepts the transaction into mined blocks")]
+        public bool PrioritiseTransaction(string transactionId, double dummy, int fee)
+        {
+            // not yet implemented by stratis codebase, not used by mining-core
+            return false;
+        }
+
+        [ActionName("getblock")]
+        [ActionDescription("get the block at the specified height")]
+        public Block GetBlock(int height)
+        {
+            var chainedBlock = this.consensusLoop.Chain.GetBlock(height);
+            var block = Block.Load(chainedBlock.Header.ToBytes(), this.Network);
+            return block;
+        }
+
+        /// <summary>Accept, verify and broadcast a block to the network</summary>
+        /// <param name="block">The full block in serialized block format as hex</param>
+        /// <param name="param">DEPRECATED. A JSON object containing extra parameters.</param>
+        /// <returns>Null if successful, error string if failure</returns>
+        [ActionName("submitblock")]
+        [ActionDescription("Accept, verify and broadcast a block to the network")]
+        public string SubmitBlock(string blockHex, object param)
+        {
+            var consensusFeature = this.fullNode.NodeFeature<ConsensusFeature>();
+            if (consensusFeature == null)
+            {
+                throw new NotImplementedException();
+            }
+
+            Block block = null;
+
+            try
+            {
+                block = Block.Load(this.miningRpcHelper.GetBytesFromHex(blockHex), this.Network);
+            }
+            catch(Exception)
+            {
+                throw new RPCServerException(RPCErrorCode.RPC_DESERIALIZATION_ERROR, "Block decode failed");
+            }
+
+            if (block == null || block.Transactions == null || !block.Transactions.Any() || !block.Transactions[0].IsCoinBase)
+            {
+                throw new RPCServerException(RPCErrorCode.RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
+            }
+
+            var hash = block.GetHash();
+            var chainedBlock = this.consensusLoop.Chain.GetBlock(hash);
+
+            bool blockPresent = false;
+            if (chainedBlock != null)
+            {
+                if (chainedBlock.Validate(this.fullNode.Network))
+                {
+                    return GetJsonResultString("duplicate");
+                }
+
+                blockPresent = true;
+
+                var previousBlock = chainedBlock.Previous;
+                if (previousBlock != null)
+                {
+                    // if include witness is enabled - not yet implemented
+                    var ruleRegistration = this.fullNode.NodeService<IRuleRegistration>();
+                    var powRule = (PowCoinviewRule)ruleRegistration.GetRules().FirstOrDefault(x => x is PowCoinviewRule);
+                    powRule.UpdateUncommittedBlockStructures(block, previousBlock);
+                }
+            }
+
+            var blockValidationContext = new BlockValidationContext { Block = block };
+            this.consensusLoop.AcceptBlockAsync(blockValidationContext).GetAwaiter().GetResult();
+
+            var tipHash = this.consensusLoop.Chain.Tip.HashBlock;
+            var isTip = tipHash.Equals(block.GetHash());
+            if (blockPresent)
+            {
+                if (blockValidationContext.Error == null && !isTip)
+                {
+                    return GetJsonResultString("duplicate-inconclusive");
+                }
+                return GetJsonResultString("duplicate");
+            }
+            if (!isTip)
+            {
+                return GetJsonResultString("inconclusive");
+            }
+
+            if (blockValidationContext.Error != null)
+            {
+                throw new RPCServerException(RPCErrorCode.RPC_VERIFY_ERROR, blockValidationContext.Error.Message);
+            }
+
+            return GetJsonResultString(null);
+        }
+
+        private string GetJsonResultString(object value)
+        {
+            return JsonConvert.SerializeObject(new { result = value });
+        }
+
+        private BitcoinBlockTransaction[] GetTransactions(Mining.BlockTemplate blockTemplate)
+        {
+            var transactions = new List<BitcoinBlockTransaction>();
+
+            var i = 0;
+            foreach(var tx in blockTemplate.Block.Transactions)
+            {
+                i++;
+
+                if (tx.IsCoinBase)
+                    continue;
+
+                var transaction = new BitcoinBlockTransaction()
+                {
+                    Data = tx.ToHex(),
+                    TxId = this.miningRpcHelper.GetHex(tx.GetHash().ToString()),
+                    Hash = this.miningRpcHelper.GetHex(tx.GetWitHash().ToString()),
+                    Fee = blockTemplate.VTxFees[i - 1].ToDecimal(MoneyUnit.BTC)
+                };
+
+                transactions.Add(transaction);
+            }
+
+            return transactions.ToArray();
+        }
+
+        private CoinbaseAux GetCoinbaseFlags()
+        {
+            if (this.chainState == null || this.chainState.ConsensusTip == null)
+                return null;
+
+            var flagsString = this.nodeDeployments.GetFlags(this.chainState.ConsensusTip).ScriptFlags.ToString();
+            var flagsHex = this.miningRpcHelper.GetHex(flagsString);
+
+            var aux = new CoinbaseAux()
+            {
+                Flags = flagsHex
+            };
+
+            return aux;
+        }
+
+        private string GetWitnessCommitment(Mining.BlockTemplate template, string[] rules)
+        {
+            if (rules == null || rules.Length == 0)
+                return null;
+
+            if (!string.IsNullOrEmpty(template.CoinbaseCommitment) && rules.Any(x => x.Contains(BIP9Deployments.Segwit.ToString(), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                // CoinbaseCommitment not yet implemented in Stratis codebase
+                return this.miningRpcHelper.GetHex(template.CoinbaseCommitment);
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Finds first available wallet and its account.
         /// </summary>
@@ -149,11 +415,11 @@ namespace Stratis.Bitcoin.Features.Miner
 
             string walletName = this.walletManager.GetWalletsNames().FirstOrDefault();
             if (walletName == null)
-                throw new RPCServerException(NBitcoin.RPC.RPCErrorCode.RPC_INVALID_REQUEST, "No wallet found");
+                throw new RPCServerException(RPCErrorCode.RPC_INVALID_REQUEST, "No wallet found");
 
             HdAccount account = this.walletManager.GetAccounts(walletName).FirstOrDefault();
             if (account == null)
-                throw new RPCServerException(NBitcoin.RPC.RPCErrorCode.RPC_INVALID_REQUEST, "No account found on wallet");
+                throw new RPCServerException(RPCErrorCode.RPC_INVALID_REQUEST, "No account found on wallet");
 
             var res = new WalletAccountReference(walletName, account.Name);
 

@@ -59,11 +59,11 @@ namespace Stratis.Bitcoin.Features.Miner
         /// pool, we select by highest fee rate of a transaction combined with all
         /// its ancestors.
         /// </summary>
-        protected long LastBlockTx = 0;
+        public long LastBlockTx = 0;
 
-        protected long LastBlockSize = 0;
+        public long LastBlockSize = 0;
 
-        protected long LastBlockWeight = 0;
+        public long LastBlockWeight = 0;
 
         protected long MedianTimePast;
 

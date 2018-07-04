@@ -6,12 +6,15 @@ using NBitcoin;
 using Newtonsoft.Json;
 using Stratis.Bitcoin.Base;
 using Stratis.Bitcoin.Configuration;
+using Stratis.Bitcoin.Features.Consensus.Interfaces;
+using Stratis.Bitcoin.Features.MemoryPool;
 using Stratis.Bitcoin.Features.Miner.Interfaces;
 using Stratis.Bitcoin.Features.Miner.Models;
-using Stratis.Bitcoin.Features.Miner.Tests.Controllers;
 using Stratis.Bitcoin.Features.RPC;
 using Stratis.Bitcoin.Features.Wallet;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
+using Stratis.Bitcoin.Interfaces;
+using Stratis.Bitcoin.Mining;
 using Stratis.Bitcoin.Tests.Common.Logging;
 using Stratis.Bitcoin.Tests.Wallet.Common;
 using Xunit;
@@ -27,6 +30,12 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         private Mock<ITimeSyncBehaviorState> timeSyncBehaviorState;
         private MiningRPCControllerFixture fixture;
         private Mock<IPowMining> powMining;
+        private Mock<IBlockProvider> blockProvider;
+        private Mock<MinerSettings> minerSettings;
+        private Mock<INetworkDifficulty> networkDifficulty;
+        private Mock<MiningRpcHelper> miningRpcHelper;
+        private Mock<MempoolManager> mempoolManager;
+        private Mock<IConsensusLoop> consensusLoop;
 
         public MiningRPCControllerTest(MiningRPCControllerFixture fixture)
         {
@@ -39,7 +48,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
             this.fullNode.Setup(f => f.NodeService<IWalletManager>(false))
                 .Returns(this.walletManager.Object);
 
-            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.posMinting.Object);
+            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.blockProvider.Object, 
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.mempoolManager.Object, this.consensusLoop.Object, this.posMinting.Object);
         }
 
 
@@ -168,7 +178,8 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         [Fact]
         public void GetStakingInfo_WithoutPosMinting_ReturnsEmptyStakingInfoModel()
         {
-            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, null);
+            this.controller = new MiningRPCController(this.powMining.Object, this.fullNode.Object, this.LoggerFactory.Object, this.walletManager.Object, this.blockProvider.Object,
+                this.minerSettings.Object, this.networkDifficulty.Object, this.miningRpcHelper.Object, this.mempoolManager.Object, this.consensusLoop.Object, null);
 
             var result = this.controller.GetStakingInfo(true);
 

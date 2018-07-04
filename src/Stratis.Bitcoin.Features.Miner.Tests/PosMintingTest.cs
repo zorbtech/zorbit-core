@@ -475,5 +475,20 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         {
             throw new NotImplementedException();
         }
+
+        public long GetLastBlockSize()
+        {
+            return this.blockDefinition.LastBlockSize;
+        }
+
+        public long GetLastBlockTx()
+        {
+            return this.blockDefinition.LastBlockTx;
+        }
+
+        public long GetLastBlockWeight()
+        {
+            return this.blockDefinition.LastBlockWeight;
+        }
     }
 }

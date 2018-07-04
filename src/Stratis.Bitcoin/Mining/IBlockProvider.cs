@@ -17,5 +17,11 @@ namespace Stratis.Bitcoin.Mining
 
         /// <summary>Builds a signed proof of stake block with the next difficulty target included in the block header.</summary>
         BlockTemplate BuildPosBlock(ChainedHeader chainTip, Script script);
+
+        long GetLastBlockTx();
+
+        long GetLastBlockSize();
+
+        long GetLastBlockWeight();
     }
 }

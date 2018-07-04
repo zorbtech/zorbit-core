@@ -579,6 +579,21 @@ namespace Stratis.Bitcoin.Features.Miner.Tests
         {
             return this.blockDefinition.Build(chainTip, script);
         }
+
+        public long GetLastBlockSize()
+        {
+            return this.blockDefinition.LastBlockSize;
+        }
+
+        public long GetLastBlockTx()
+        {
+            return this.blockDefinition.LastBlockTx;
+        }
+
+        public long GetLastBlockWeight()
+        {
+            return this.blockDefinition.LastBlockWeight;
+        }
     }
 
     /// <summary>

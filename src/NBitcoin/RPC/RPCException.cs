@@ -21,9 +21,14 @@ namespace NBitcoin.RPC
         RPC_INVALID_PARAMETER = -8, // Invalid, missing or duplicate parameter
         RPC_DATABASE_ERROR = -20, // Database error
         RPC_DESERIALIZATION_ERROR = -22, // Error parsing or validating structure in raw format
-        RPC_TRANSACTION_ERROR = -25, // General error during transaction submission
-        RPC_TRANSACTION_REJECTED = -26, // Transaction was rejected by network rules
-        RPC_TRANSACTION_ALREADY_IN_CHAIN = -27, // Transaction already in chain
+        RPC_VERIFY_ERROR = -25, //!< General error during transaction or block submission
+        RPC_VERIFY_REJECTED = -26, //!< Transaction or block was rejected by network rules
+        RPC_VERIFY_ALREADY_IN_CHAIN = -27, //!< Transaction already in chain
+
+        // Aliases for backward compatibility
+        RPC_TRANSACTION_ERROR = RPC_VERIFY_ERROR, // General error during transaction submission
+        RPC_TRANSACTION_REJECTED = RPC_VERIFY_REJECTED, // Transaction was rejected by network rules
+        RPC_TRANSACTION_ALREADY_IN_CHAIN = RPC_VERIFY_ALREADY_IN_CHAIN, // Transaction already in chain
 
         // P2P client errors
         RPC_CLIENT_NOT_CONNECTED = -9, // Bitcoin is not connected

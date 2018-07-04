@@ -32,5 +32,20 @@ namespace Stratis.Bitcoin.Features.Miner
         {
             return this.powBlockDefinition.Build(chainTip, script);
         }
+
+        public long GetLastBlockSize()
+        {
+            return this.powBlockDefinition.LastBlockSize;
+        }
+
+        public long GetLastBlockTx()
+        {
+            return this.powBlockDefinition.LastBlockTx;
+        }
+
+        public long GetLastBlockWeight()
+        {
+            return this.powBlockDefinition.LastBlockWeight;
+        }
     }
 }

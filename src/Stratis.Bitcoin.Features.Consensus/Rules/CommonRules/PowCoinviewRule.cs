@@ -1,6 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using Stratis.Bitcoin.Base.Deployments;
 using Stratis.Bitcoin.Utilities;
 
 namespace Stratis.Bitcoin.Features.Consensus.Rules.CommonRules
@@ -68,9 +70,63 @@ namespace Stratis.Bitcoin.Features.Consensus.Rules.CommonRules
         }
 
         /// <inheritdoc />
+        /// 
         public override Task RunAsync(RuleContext context)
         {
             return base.RunAsync(context);
+        }
+
+        public void UpdateUncommittedBlockStructures(Block block, ChainedHeader previousBlock)
+        {
+            var commitPos = this.GetWitnessCommitmentIndex(block);
+            var nonce = RandomUtils.GetUInt64();
+            var nonceBytes = Encoding.Default.GetBytes(nonce.ToString());
+            if (commitPos != -1 && this.IsWitnessEnabled(previousBlock) && !block.Transactions[0].HasWitness)
+            {
+                var transaction = block.Transactions[0];
+                transaction.Inputs[0].WitScript = new WitScript(new[] { nonceBytes }, true);
+            }
+        }
+
+        private bool IsWitnessEnabled(ChainedHeader block)
+        {
+            var thresholdConditionCache = new ThresholdConditionCache(this.consensusParams);
+            var state = thresholdConditionCache.GetState(block, BIP9Deployments.Segwit);
+            return state == ThresholdState.Active;
+        }
+
+        /// <summary>
+        /// Gets index of the last coinbase transaction output with SegWit flag.
+        /// </summary>
+        /// <param name="block">Block which coinbase transaction's outputs will be checked for SegWit flags.</param>
+        /// <returns>
+        /// <c>-1</c> if no SegWit flags were found.
+        /// If SegWit flag is found index of the last transaction's output that has SegWit flag is returned.
+        /// </returns>
+        private int GetWitnessCommitmentIndex(Block block)
+        {
+            int commitpos = -1;
+            for (int i = 0; i < block.Transactions[0].Outputs.Count; i++)
+            {
+                var scriptPubKey = block.Transactions[0].Outputs[i].ScriptPubKey;
+
+                if (scriptPubKey.Length >= 38)
+                {
+                    byte[] scriptBytes = scriptPubKey.ToBytes(true);
+
+                    if ((scriptBytes[0] == (byte)OpcodeType.OP_RETURN) &&
+                        (scriptBytes[1] == 0x24) &&
+                        (scriptBytes[2] == 0xaa) &&
+                        (scriptBytes[3] == 0x21) &&
+                        (scriptBytes[4] == 0xa9) &&
+                        (scriptBytes[5] == 0xed))
+                    {
+                        commitpos = i;
+                    }
+                }
+            }
+
+            return commitpos;
         }
     }
 }

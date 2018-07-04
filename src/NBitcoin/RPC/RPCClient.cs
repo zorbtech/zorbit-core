@@ -9,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using NBitcoin.DataEncoders;
+using NBitcoin.RPC.Dtos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -23,7 +24,7 @@ namespace NBitcoin.RPC
         control            stop
 
         ------------------ P2P networking
-        network            getnetworkinfo
+        network            getnetworkinfo               Yes
         network            addnode                      Yes
         network            disconnectnode
         network            getaddednodeinfo             Yes
@@ -36,13 +37,13 @@ namespace NBitcoin.RPC
         network            clearbanned
 
         ------------------ Block chain and UTXO
-        blockchain         getblockchaininfo
+        blockchain         getblockchaininfo            Yes
         blockchain         getbestblockhash             Yes
         blockchain         getblockcount                Yes
         blockchain         getblock                     Yes
         blockchain         getblockhash                 Yes
         blockchain         getchaintips
-        blockchain         getdifficulty
+        blockchain         getdifficulty                Yes
         blockchain         getmempoolinfo
         blockchain         getrawmempool                Yes
         blockchain         gettxout                    Yes
@@ -52,11 +53,11 @@ namespace NBitcoin.RPC
         blockchain         verifychain
 
         ------------------ Mining
-        mining             getblocktemplate
-        mining             getmininginfo
-        mining             getnetworkhashps
-        mining             prioritisetransaction
-        mining             submitblock
+        mining             getblocktemplate             Yes
+        mining             getmininginfo                Yes
+        mining             getnetworkhashps             Yes
+        mining             prioritisetransaction        TODO
+        mining             submitblock                  Yes
 
         ------------------ Coin generation
         generating         getgenerate
@@ -832,6 +833,27 @@ namespace NBitcoin.RPC
             return result;
         }
 
+        public NetworkInfo GetNetworkInfo()
+        {
+            var result = SendCommand(RPCOperations.getnetworkinfo).Result;
+            return ParseNetworkInfo(result);
+        }
+
+        private NetworkInfo ParseNetworkInfo(JToken result)
+        {
+            var networkInfo = new NetworkInfo()
+            {
+                Version = (string)result["version"],
+                SubVersion = (string)result["subVersion"],
+                ProtocolVersion = int.Parse((string)result["protocolVersion"]),
+                Connections = int.Parse((string)result["connections"]),
+                LocalRelay = bool.Parse((string)result["localRelay"]),
+                NetworkActive = bool.Parse((string)result["networkActive"])
+            };
+
+            return networkInfo;
+        }
+
         public void AddNode(EndPoint nodeEndPoint, bool onetry = false)
         {
             if (nodeEndPoint == null)
@@ -930,6 +952,34 @@ namespace NBitcoin.RPC
 #endregion
 
 #region Block chain and UTXO
+
+        public BlockChainInfo GetBlockChainInfo()
+        {
+            var response = SendCommand(RPCOperations.getblockchaininfo);
+            return ParseBlockChainInfo(response);
+        }
+
+        private BlockChainInfo ParseBlockChainInfo(RPCResponse response)
+        {
+            var blockChainInfo = new BlockChainInfo()
+            {
+                Chain = (string)response.Result["chain"],
+                Blocks = (int)response.Result["blocks"],
+                Headers = (int)response.Result["headers"],
+                BestBlockHash = (string)response.Result["bestBlockHash"],
+                Difficulty = double.Parse((string)response.Result["difficulty"]),
+                MedianTime = long.Parse((string)response.Result["medianTime"]),
+                Pruned = (bool)response.Result["pruned"],
+                VerificationProgress = double.Parse((string)response.Result["verificationProgress"])
+            };
+
+            return blockChainInfo;
+        }
+
+        public double GetDifficulty()
+        {
+            return (double)SendCommand(RPCOperations.getdifficulty).Result;
+        }
 
         public uint256 GetBestBlockHash()
         {
@@ -1341,7 +1391,106 @@ namespace NBitcoin.RPC
             return SendCommand(RPCOperations.settxfee, new[] { feeRate.FeePerK.ToString() }).Result.ToString() == "true";
         }
 
-#endregion
+        #endregion
+
+#region Mining
+
+        public object GetBlockTemplate(BlockTemplateRequest request)
+        {
+            var result = SendCommand(RPCOperations.getblocktemplate, request.Mode, request.Capabilities, request.Rules, request.Data).Result;
+            if (request.Mode.Equals(BlockTemplateRequestMode.Submit) || request.Mode.Equals(BlockTemplateRequestMode.Proposal))
+            {
+                return result.ToString();
+            }
+
+            return ParseBlockTemplate(result);
+        }
+
+        public MiningInfo GetMiningInfo()
+        {
+            var result = SendCommand(RPCOperations.getmininginfo).Result;
+            return ParseMiningInfo(result);
+        }
+
+        public double GetNetworkHashPs(long lookup, int height)
+        {
+            return double.Parse(SendCommand(RPCOperations.getnetworkhashps, lookup, height).Result.ToString());
+        }
+
+        public bool PrioritiseTransaction(string transactionId, double dummy, int fee)
+        {
+            return bool.Parse(SendCommand(RPCOperations.prioritisetransaction, transactionId, dummy, fee).Result.ToString());
+        }
+
+        public string SubmitBlock(string blockHex, object param)
+        {
+            return SendCommand(RPCOperations.submitblock, blockHex, param).Result.ToString();
+        }
+
+        private BlockTemplate ParseBlockTemplate(JToken result)
+        {
+            return new BlockTemplate()
+            {
+                Version = uint.Parse((string)result["version"]),
+                PreviousBlockhash = (string)result["previousBlockHash"],
+                CoinbaseValue = (long)result["coinbaseValue"],
+                Target = (string)result["target"],
+                NonceRange = (string)result["nonceRange"],
+                CurTime = uint.Parse((string)result["curTime"]),
+                Bits = (string)result["bits"],
+                Height = uint.Parse((string)result["height"]),
+                Transactions = ParseTransactions(result["transactions"]),
+                CoinbaseAux = ParseCoinbaseAux(result["coinbaseAux"]),
+                DefaultWitnessCommitment = (string)result["defaultWitnessCommitment"]
+            };
+        }
+
+        private BitcoinBlockTransaction[] ParseTransactions(JToken jToken)
+        {
+            if (jToken == null)
+                return null;
+
+            var transactions = new List<BitcoinBlockTransaction>();
+
+            foreach(JToken token in jToken.Children())
+            {
+                var transaction = new BitcoinBlockTransaction()
+                {
+                    Data = (string)token["data"],
+                    TxId = (string)token["txId"],
+                    Hash = (string)token["hash"],
+                    Fee = decimal.Parse((string)token["fee"])
+                };
+            }
+
+            return transactions.ToArray();
+        }
+
+        private CoinbaseAux ParseCoinbaseAux(JToken jToken)
+        {
+            if (jToken == null)
+                return null;
+
+            return new CoinbaseAux()
+            {
+                Flags = (string)jToken["flags"]
+            };
+        }
+
+        private MiningInfo ParseMiningInfo(JToken result)
+        {
+            return new MiningInfo()
+            {
+                Blocks = int.Parse((string)result["blocks"]),
+                CurrentBlockSize = long.Parse((string)result["currentBlockSize"]),
+                CurrentBlockWeight = long.Parse((string)result["currentBlockWeight"]),
+                Difficulty = double.Parse((string)result["difficulty"]),
+                NetworkHashps = double.Parse((string)result["networkHashps"]),
+                Chain = (string)result["chain"]
+            };
+        }
+
+        #endregion
 
         public async Task<uint256[]> GenerateAsync(int nBlocks)
         {
